@@ -47,7 +47,7 @@ export default function Landing() {
               rel="noopener noreferrer"
               startContent={<Github size={16} />}
             >
-              Check GitHub out
+              Check GitHub
             </Button>
             <Button
               className="bg-default-100 text-small h-10 w-[163px] border-1 px-[16px] py-[10px] leading-5 font-medium"

@@ -1,0 +1,21 @@
+{
+  "name": "Better MyCourses",
+  "short_name": "Better MyCourses",
+  "description": "A modern, clean replacement for the MyCourses Moodle interface with enhanced usability and design.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "16x16 32x32",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["education", "productivity", "utilities"],
+  "lang": "en",
+  "scope": "/",
+  "prefer_related_applications": false
+}

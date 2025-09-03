@@ -208,6 +208,7 @@ export default function Component() {
                       name="username"
                       placeholder="u6888056"
                       aria-label="University Username"
+                      autoComplete="username"
                       startContent={
                         <User className="text-default-500" size={18} />
                       }
@@ -253,6 +254,7 @@ export default function Component() {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       aria-label="Username"
+                      autoComplete="username"
                       startContent={
                         <User className="text-default-500" size={18} />
                       }
@@ -269,6 +271,7 @@ export default function Component() {
                       name="password"
                       type="password"
                       aria-label="Password"
+                      autoComplete="current-password"
                       startContent={
                         <Lock className="text-default-500" size={18} />
                       }

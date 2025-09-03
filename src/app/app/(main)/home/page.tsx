@@ -233,7 +233,7 @@ export default function Home() {
           }) => (
             <Card
               key={title}
-              className="border border-transparent p-4 dark:px-0 bg-card hover:bg-card/50 transition-colors"
+              className="border border-transparent p-4 dark:px-0  bg-card hover:bg-card/50 transition-colors"
             >
               <div
                 className={cn(

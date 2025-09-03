@@ -10,17 +10,19 @@ const getAuthToken = () => {
 };
 
 // Create API instance with authorization header
-export const api = treaty<App>("http://localhost:3000", {
-  headers: {
-    get Authorization() {
-      const token = getAuthToken();
-      return token ? `Bearer ${token}` : "";
+export const api = treaty<App>(
+  typeof window !== "undefined"
+    ? window.location.origin
+    : "http://localhost:3000",
+  {
+    headers: {
+      get Authorization() {
+        const token = getAuthToken();
+        return token ? `Bearer ${token}` : "";
+      },
     },
   },
-});
-
-// For production, you might want to use environment variables
-// export const api = treaty<App>(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000')
+);
 
 /**
  * Session management utilities

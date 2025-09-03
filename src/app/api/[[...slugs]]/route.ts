@@ -1,3 +1,4 @@
+import { cors } from "@elysiajs/cors";
 import { jwt } from "@elysiajs/jwt";
 import { swagger } from "@elysiajs/swagger";
 import axios from "axios";
@@ -306,6 +307,14 @@ const SessionLoginResponse = t.Object({
 });
 
 const app = new Elysia({ prefix: "/api" })
+  .use(
+    cors({
+      origin: true,
+      credentials: true,
+      allowedHeaders: ["Content-Type", "Authorization"],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    }),
+  )
   .onAfterHandle(({ set }) => {
     // Add security headers to all responses
     const headers = (set.headers as Record<string, string>) || {};
@@ -1224,3 +1233,6 @@ const app = new Elysia({ prefix: "/api" })
 export type App = typeof app;
 export const GET = app.handle;
 export const POST = app.handle;
+export const PUT = app.handle;
+export const DELETE = app.handle;
+export const OPTIONS = app.handle;

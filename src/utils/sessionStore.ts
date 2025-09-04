@@ -20,6 +20,7 @@ interface SessionState {
   isLoading: boolean;
   isBackgroundSyncing: boolean;
   syncProgress: SyncProgress;
+  forceSyncRequested: boolean;
 }
 
 interface SessionActions {
@@ -37,6 +38,8 @@ interface SessionActions {
   setBackgroundSyncing: (syncing: boolean) => void;
   setSyncProgress: (step: string, progress: number, details?: string) => void;
   clearSyncProgress: () => void;
+  triggerForceSync: () => void;
+  clearForceSync: () => void;
 }
 
 type SessionStore = SessionState & SessionActions;
@@ -57,6 +60,7 @@ const useSessionStore = create<SessionStore>()(
         currentStep: "",
         progress: 0,
       },
+      forceSyncRequested: false,
 
       setSession: (token, sesskey, moodleSession, expiresIn = 3600) => {
         const expiresAt = Date.now() + expiresIn * 1000;
@@ -122,7 +126,12 @@ const useSessionStore = create<SessionStore>()(
         set({
           syncProgress: { currentStep: "", progress: 0 },
           isBackgroundSyncing: false,
+          forceSyncRequested: false,
         }),
+
+      triggerForceSync: () => set({ forceSyncRequested: true }),
+
+      clearForceSync: () => set({ forceSyncRequested: false }),
     }),
     {
       name: "session-store",

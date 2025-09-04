@@ -28,7 +28,6 @@ import {
   ScrollShadow,
   Tab,
   Tabs,
-  Tooltip,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { FastForward } from "lucide-react";
@@ -42,8 +41,9 @@ interface AppShellProps {
 }
 
 export default function AppShell({ children }: AppShellProps) {
-  const { user, clearUser } = useUserStore();
-  const { clearSession, isBackgroundSyncing, syncProgress } = useSessionStore();
+  const { user, clearUser, syncStatus } = useUserStore();
+  const { clearSession, isBackgroundSyncing, syncProgress, triggerForceSync } =
+    useSessionStore();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -70,6 +70,12 @@ export default function AppShell({ children }: AppShellProps) {
     clearSession();
     clearUser();
     router.push("/app/auth");
+  };
+
+  const handleForceSync = () => {
+    // Trigger force sync through the session store
+    // This will be picked up by MoodleProvider and handled as background sync
+    triggerForceSync();
   };
 
   return (
@@ -241,7 +247,17 @@ export default function AppShell({ children }: AppShellProps) {
                   route.key === "courses" ? (
                     <div className="flex items-center gap-2">
                       <p>{route.title}</p>
-                      <Chip size="sm">{user?.courses?.length || 0}</Chip>
+                      <Chip
+                        size="sm"
+                        color={
+                          syncStatus.coursesSyncing ? "primary" : "default"
+                        }
+                      >
+                        {user?.courses?.length || 0}
+                      </Chip>
+                      {syncStatus.coursesSyncing && (
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                      )}
                     </div>
                   ) : (
                     route.title
@@ -251,67 +267,181 @@ export default function AppShell({ children }: AppShellProps) {
             ))}
           </Tabs>
           <div className="flex items-center gap-4">
-            {isBackgroundSyncing ? (
-              <Popover placement="bottom-end" showArrow>
-                <PopoverTrigger>
-                  <Button
-                    radius="full"
-                    size="sm"
-                    variant="ghost"
-                    startContent={
-                      <div
-                        className={cn(
-                          "w-2 h-2 bg-blue-500 rounded-full animate-pulse",
-                        )}
-                      />
-                    }
-                  >
-                    Syncing...
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-72">
-                  <div className="px-3 py-3">
-                    <div className="text-small font-bold mb-3">
-                      Background Sync
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <div className="text-tiny font-medium">
-                          {syncProgress.currentStep}
-                        </div>
-                        <div className="text-tiny text-foreground/60">
-                          {Math.round(syncProgress.progress)}%
-                        </div>
-                      </div>
-                      <Progress
-                        value={syncProgress.progress}
-                        color="primary"
-                        size="sm"
-                        className="w-full"
-                      />
-                      {syncProgress.details && (
-                        <div className="text-xs text-foreground/50">
-                          {syncProgress.details}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            ) : (
-              <Tooltip content="All data synchronized" placement="bottom">
+            <Popover placement="bottom-end" showArrow>
+              <PopoverTrigger>
                 <Button
                   radius="full"
                   size="sm"
                   variant="ghost"
                   startContent={
-                    <div className={cn("w-2 h-2 bg-green-500 rounded-full")} />
+                    <div
+                      className={cn(
+                        "w-2 h-2 rounded-full",
+                        isBackgroundSyncing
+                          ? "bg-blue-500 animate-pulse"
+                          : "bg-green-500",
+                      )}
+                    />
                   }
                 >
-                  Synced
+                  {isBackgroundSyncing ? "Syncing..." : "Synced"}
                 </Button>
-              </Tooltip>
-            )}
+              </PopoverTrigger>
+              <PopoverContent className="w-80 min-w-80">
+                <div className="px-3 py-3 min-w-72">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-small font-bold">
+                      {isBackgroundSyncing ? "Background Sync" : "Sync Status"}
+                    </div>
+                    {!isBackgroundSyncing && (
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="h-6 w-6 min-w-6"
+                        onPress={handleForceSync}
+                      >
+                        <Icon
+                          icon="solar:refresh-linear"
+                          width={12}
+                          height={12}
+                        />
+                      </Button>
+                    )}
+                    {isBackgroundSyncing && (
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="h-6 w-6 min-w-6 opacity-50"
+                        isDisabled
+                      >
+                        <Icon
+                          icon="solar:refresh-linear"
+                          width={12}
+                          height={12}
+                        />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-3 w-full min-w-72">
+                    {isBackgroundSyncing && (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <div className="text-tiny font-medium">
+                            {syncProgress.currentStep}
+                          </div>
+                          <div className="text-tiny text-foreground/60">
+                            {Math.round(syncProgress.progress)}%
+                          </div>
+                        </div>
+                        <Progress
+                          value={syncProgress.progress}
+                          color="primary"
+                          size="sm"
+                          className="w-full"
+                        />
+                      </>
+                    )}
+
+                    {!isBackgroundSyncing && (
+                      <div className="text-tiny text-foreground/60 mb-2 w-full min-w-72 text-center py-4 border border-transparent">
+                        All data is up to date
+                      </div>
+                    )}
+
+                    {/* Individual sync statuses */}
+                    <div className="space-y-2 mt-4 w-full min-w-72">
+                      <div className="flex items-center justify-between text-xs">
+                        <span>Profile</span>
+                        <div className="flex items-center gap-1">
+                          {syncStatus.profileSyncing ? (
+                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                          ) : (
+                            <div className="w-2 h-2 bg-green-500 rounded-full" />
+                          )}
+                          <span className="text-foreground/60">
+                            {syncStatus.profileSyncing ? "Syncing" : "Synced"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs">
+                        <span>Courses</span>
+                        <div className="flex items-center gap-1">
+                          {syncStatus.coursesSyncing ? (
+                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                          ) : (
+                            <div className="w-2 h-2 bg-green-500 rounded-full" />
+                          )}
+                          <span className="text-foreground/60">
+                            {syncStatus.coursesSyncing ? "Syncing" : "Synced"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Attendance Section - Always show the header for consistent width */}
+                      <div className="text-xs">
+                        <div className="flex items-center justify-between">
+                          <span>Attendance</span>
+                          <div className="flex items-center gap-1">
+                            {Object.values(syncStatus.attendanceSyncing).some(
+                              (syncing) => syncing,
+                            ) ? (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                            ) : (
+                              <div className="w-2 h-2 bg-green-500 rounded-full" />
+                            )}
+                            <span className="text-foreground/60">
+                              {Object.values(syncStatus.attendanceSyncing).some(
+                                (syncing) => syncing,
+                              )
+                                ? "Syncing"
+                                : "Synced"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Show individual course sync status only if any are syncing */}
+                        {Object.values(syncStatus.attendanceSyncing).some(
+                          (syncing) => syncing,
+                        ) && (
+                          <div className="mt-2">
+                            <div className="max-h-20 overflow-y-auto space-y-1">
+                              {Object.entries(syncStatus.attendanceSyncing).map(
+                                ([courseId, syncing]) => {
+                                  const course = user?.courses?.find(
+                                    (c) => c.id === Number(courseId),
+                                  );
+                                  return syncing ? (
+                                    <div
+                                      key={courseId}
+                                      className="flex items-center gap-1 text-xs ml-4"
+                                    >
+                                      <div className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" />
+                                      <span className="text-foreground/60">
+                                        {course?.shortname ||
+                                          `Course ${courseId}`}
+                                      </span>
+                                    </div>
+                                  ) : null;
+                                },
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {isBackgroundSyncing && syncProgress.details && (
+                      <div className="text-xs text-foreground/50 mt-3">
+                        {syncProgress.details}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </ScrollShadow>
       </div>

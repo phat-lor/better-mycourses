@@ -76,10 +76,17 @@ interface User {
   courses: Course[];
 }
 
+interface SyncStatus {
+  profileSyncing: boolean;
+  coursesSyncing: boolean;
+  attendanceSyncing: { [courseId: number]: boolean };
+}
+
 interface UserState {
   user: User | null;
   isLoading: boolean;
   error: string | null;
+  syncStatus: SyncStatus;
 }
 
 interface UserActions {
@@ -103,6 +110,10 @@ interface UserActions {
   clearUser: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setProfileSyncing: (syncing: boolean) => void;
+  setCoursesSyncing: (syncing: boolean) => void;
+  setAttendanceSyncing: (courseId: number, syncing: boolean) => void;
+  clearAllSyncStatus: () => void;
 }
 
 type UserStore = UserState & UserActions;
@@ -113,6 +124,11 @@ const useUserStore = create<UserStore>()(
       user: null,
       isLoading: false,
       error: null,
+      syncStatus: {
+        profileSyncing: false,
+        coursesSyncing: false,
+        attendanceSyncing: {},
+      },
 
       setUser: (user) => set({ user, error: null }),
 
@@ -305,11 +321,53 @@ const useUserStore = create<UserStore>()(
         }
       },
 
-      clearUser: () => set({ user: null, error: null }),
+      clearUser: () =>
+        set({
+          user: null,
+          error: null,
+          syncStatus: {
+            profileSyncing: false,
+            coursesSyncing: false,
+            attendanceSyncing: {},
+          },
+        }),
 
       setLoading: (loading) => set({ isLoading: loading }),
 
       setError: (error) => set({ error }),
+
+      setProfileSyncing: (syncing) => {
+        const { syncStatus } = get();
+        set({ syncStatus: { ...syncStatus, profileSyncing: syncing } });
+      },
+
+      setCoursesSyncing: (syncing) => {
+        const { syncStatus } = get();
+        set({ syncStatus: { ...syncStatus, coursesSyncing: syncing } });
+      },
+
+      setAttendanceSyncing: (courseId, syncing) => {
+        const { syncStatus } = get();
+        set({
+          syncStatus: {
+            ...syncStatus,
+            attendanceSyncing: {
+              ...syncStatus.attendanceSyncing,
+              [courseId]: syncing,
+            },
+          },
+        });
+      },
+
+      clearAllSyncStatus: () => {
+        set({
+          syncStatus: {
+            profileSyncing: false,
+            coursesSyncing: false,
+            attendanceSyncing: {},
+          },
+        });
+      },
     }),
     {
       name: "user-store",

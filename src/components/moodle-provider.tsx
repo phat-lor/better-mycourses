@@ -69,6 +69,8 @@ export function MoodleProvider({ children }: MoodleProviderProps) {
     setBackgroundSyncing,
     setSyncProgress,
     clearSyncProgress,
+    forceSyncRequested,
+    clearForceSync,
   } = useSessionStore();
   const {
     setLoading: setUserLoading,
@@ -76,248 +78,326 @@ export function MoodleProvider({ children }: MoodleProviderProps) {
     setCourses,
     setAttendance,
     clearUser,
+    setProfileSyncing,
+    setCoursesSyncing,
+    setAttendanceSyncing,
+    clearAllSyncStatus,
   } = useUserStore();
 
-  const onInit = useCallback(async () => {
-    // Prevent multiple simultaneous initializations
-    if (initRef.current || isBackgroundSyncing) return;
-    initRef.current = true;
+  const onInit = useCallback(
+    async (isForceSync = false) => {
+      // Prevent multiple simultaneous initializations
+      if (initRef.current || isBackgroundSyncing) return;
+      initRef.current = true;
 
-    // Check if we have existing user data in localStorage
-    // We'll get fresh user state inside the function to avoid dependencies
-    const currentUser = useUserStore.getState().user;
-    const hasExistingData =
-      currentUser?.courses && currentUser.courses.length > 0;
-    const shouldShowSplash = !hasExistingData;
-
-    if (shouldShowSplash) {
-      setLoading(true);
-      setUserLoading(true);
-      setLoadingProgress(10);
-      setCurrentStep("Checking session...");
-    } else {
-      // Skip splash, sync in background
-      setIsInitializing(false);
-      setBackgroundSyncing(true);
-      setSyncProgress("Checking session...", 10);
-    }
-
-    try {
-      const response = await retryWithBackoff(
-        () => sessionAPI.checkSession(),
-        3,
-        1000,
-        "Session check",
-        (attempt, _delay) => {
-          if (!shouldShowSplash) {
-            setSyncProgress(`Session check retry ${attempt}/3...`, 10);
-          }
-        },
-      );
+      // Check if we have existing user data in localStorage
+      // We'll get fresh user state inside the function to avoid dependencies
+      const currentUser = useUserStore.getState().user;
+      const hasExistingData =
+        currentUser?.courses && currentUser.courses.length > 0;
+      const shouldShowSplash = !hasExistingData && !isForceSync;
 
       if (shouldShowSplash) {
-        setLoadingProgress(20);
+        setLoading(true);
+        setUserLoading(true);
+        setLoadingProgress(10);
+        setCurrentStep("Checking session...");
       } else {
-        setSyncProgress("Session verified", 20);
-      }
-
-      if (!response.data?.success || !response.data?.isAuthenticated) {
-        clearSession();
-        clearUser();
-        clearSyncProgress();
-        router.push("/app/auth");
-        return;
-      }
-
-      if (response.data?.sesskey && session.token) {
-        if (response.data?.sesskeyChanged) {
-          // JWT token should be refreshed if sesskey changed, but for now we'll keep the existing token
-          // In a production app, you might want to request a new token here
+        // Skip splash, sync in background
+        setIsInitializing(false);
+        setBackgroundSyncing(true);
+        if (isForceSync) {
+          setSyncProgress("Force refreshing...", 10);
+        } else {
+          setSyncProgress("Checking session...", 10);
         }
       }
 
-      if (shouldShowSplash) {
-        setLoadingProgress(30);
-        setCurrentStep("Fetching user profile...");
-      } else {
-        setSyncProgress("Updating profile...", 30);
-      }
-
-      // Fetch user profile data when authenticated
       try {
-        const profileResponse = await retryWithBackoff(
-          () => sessionAPI.getUserProfile(),
+        const response = await retryWithBackoff(
+          () => sessionAPI.checkSession(),
           3,
           1000,
-          "User profile",
+          "Session check",
           (attempt, _delay) => {
             if (!shouldShowSplash) {
-              setSyncProgress(`Profile retry ${attempt}/3...`, 30);
+              setSyncProgress(`Session check retry ${attempt}/3...`, 10);
             }
           },
         );
 
         if (shouldShowSplash) {
-          setLoadingProgress(40);
-          setCurrentStep("Processing profile data...");
+          setLoadingProgress(20);
         } else {
-          setSyncProgress("Profile updated", 40);
+          setSyncProgress("Session verified", 20);
         }
 
-        if (profileResponse.data?.success && profileResponse.data?.profile) {
-          setUser({
-            firstName: profileResponse.data.profile.firstName,
-            lastName: profileResponse.data.profile.lastName,
-            email: profileResponse.data.profile.email,
-            courses: hasExistingData ? currentUser.courses : [],
-          });
+        if (!response.data?.success || !response.data?.isAuthenticated) {
+          clearSession();
+          clearUser();
+          clearSyncProgress();
+          router.push("/app/auth");
+          return;
+        }
+
+        if (response.data?.sesskey && session.token) {
+          if (response.data?.sesskeyChanged) {
+            // JWT token should be refreshed if sesskey changed, but for now we'll keep the existing token
+            // In a production app, you might want to request a new token here
+          }
+        }
+
+        if (shouldShowSplash) {
+          setLoadingProgress(30);
+          setCurrentStep("Fetching user profile...");
+        } else {
+          setSyncProgress("Updating profile...", 30);
+        }
+
+        // Fetch user profile data when authenticated
+        try {
+          // Set profile syncing status
+          if (!shouldShowSplash) {
+            setProfileSyncing(true);
+          }
+
+          const profileResponse = await retryWithBackoff(
+            () => sessionAPI.getUserProfile(),
+            3,
+            1000,
+            "User profile",
+            (attempt, _delay) => {
+              if (!shouldShowSplash) {
+                setSyncProgress(`Profile retry ${attempt}/3...`, 30);
+              }
+            },
+          );
 
           if (shouldShowSplash) {
-            setLoadingProgress(50);
-            setCurrentStep("Fetching courses list...");
+            setLoadingProgress(40);
+            setCurrentStep("Processing profile data...");
           } else {
-            setSyncProgress("Syncing courses...", 50);
+            setSyncProgress("Profile updated", 40);
           }
 
-          // Fetch courses data
-          try {
-            const coursesResponse = await retryWithBackoff(
-              () => sessionAPI.getCourses(),
-              3,
-              1000,
-              "Courses list",
-              (attempt, _delay) => {
-                if (!shouldShowSplash) {
-                  setSyncProgress(`Courses retry ${attempt}/3...`, 50);
-                }
-              },
-            );
+          if (profileResponse.data?.success && profileResponse.data?.profile) {
+            // Only update profile data, preserve existing courses
+            const existingCourses = hasExistingData ? currentUser.courses : [];
+            setUser({
+              firstName: profileResponse.data.profile.firstName,
+              lastName: profileResponse.data.profile.lastName,
+              email: profileResponse.data.profile.email,
+              courses: existingCourses,
+            });
+
+            // Clear profile syncing status
+            if (!shouldShowSplash) {
+              setProfileSyncing(false);
+            }
 
             if (shouldShowSplash) {
-              setLoadingProgress(60);
-              setCurrentStep("Processing courses data...");
+              setLoadingProgress(50);
+              setCurrentStep("Fetching courses list...");
             } else {
-              setSyncProgress("Courses synced", 60);
+              setSyncProgress("Syncing courses...", 50);
             }
 
-            if (
-              coursesResponse.data?.success &&
-              coursesResponse.data?.courses
-            ) {
-              const courses = coursesResponse.data.courses;
-              setCourses(courses);
+            // Fetch courses data
+            try {
+              // Set courses syncing status
+              if (!shouldShowSplash) {
+                setCoursesSyncing(true);
+              }
+
+              const coursesResponse = await retryWithBackoff(
+                () => sessionAPI.getCourses(),
+                3,
+                1000,
+                "Courses list",
+                (attempt, _delay) => {
+                  if (!shouldShowSplash) {
+                    setSyncProgress(`Courses retry ${attempt}/3...`, 50);
+                  }
+                },
+              );
 
               if (shouldShowSplash) {
-                setLoadingProgress(70);
+                setLoadingProgress(60);
+                setCurrentStep("Processing courses data...");
               } else {
-                setSyncProgress("Syncing attendance...", 70);
+                setSyncProgress("Courses synced", 60);
               }
 
-              // Fetch attendance data for each course with detailed progress
-              const totalCourses = courses.length;
+              if (
+                coursesResponse.data?.success &&
+                coursesResponse.data?.courses
+              ) {
+                const courses = coursesResponse.data.courses;
 
-              if (shouldShowSplash) {
-                setCurrentStep(`Reading attendance 0/${totalCourses}`);
-              }
-
-              for (let i = 0; i < courses.length; i++) {
-                const course = courses[i];
-                const currentIndex = i + 1;
-
-                const stepMessage = `Reading attendance ${currentIndex}/${totalCourses} - ${course.fullname || course.shortname || `Course ${course.id}`}`;
-
-                if (shouldShowSplash) {
-                  setCurrentStep(stepMessage);
+                // For background sync, preserve existing attendance data
+                if (!shouldShowSplash && hasExistingData) {
+                  const existingCourses = currentUser.courses;
+                  const mergedCourses = courses.map((newCourse) => {
+                    const existingCourse = existingCourses.find(
+                      (c) => c.id === newCourse.id,
+                    );
+                    return existingCourse
+                      ? { ...newCourse, attendance: existingCourse.attendance }
+                      : newCourse;
+                  });
+                  setCourses(mergedCourses);
                 } else {
-                  setSyncProgress(
-                    stepMessage,
-                    70 + (currentIndex / totalCourses) * 20,
-                  );
+                  setCourses(courses);
                 }
 
-                try {
-                  const attendanceResponse = await retryWithBackoff(
-                    () => sessionAPI.getAttendance(course.id.toString()),
-                    3,
-                    1000,
-                    `Attendance for course ${course.shortname || course.id}`,
-                    (attempt, _delay) => {
-                      if (!shouldShowSplash) {
-                        setSyncProgress(
-                          `${course.shortname || `Course ${course.id}`} attendance retry ${attempt}/3...`,
-                          70 + (currentIndex / totalCourses) * 20,
-                        );
-                      }
-                    },
-                  );
-                  if (
-                    attendanceResponse.data?.success &&
-                    attendanceResponse.data?.attendance
-                  ) {
-                    setAttendance(
-                      course.id,
-                      attendanceResponse.data.attendance,
+                // Clear courses syncing status
+                if (!shouldShowSplash) {
+                  setCoursesSyncing(false);
+                }
+
+                if (shouldShowSplash) {
+                  setLoadingProgress(70);
+                } else {
+                  setSyncProgress("Syncing attendance...", 70);
+                }
+
+                // Fetch attendance data for each course with detailed progress
+                const totalCourses = courses.length;
+
+                if (shouldShowSplash) {
+                  setCurrentStep(`Reading attendance 0/${totalCourses}`);
+                }
+
+                for (let i = 0; i < courses.length; i++) {
+                  const course = courses[i];
+                  const currentIndex = i + 1;
+
+                  const stepMessage = `Reading attendance ${currentIndex}/${totalCourses} - ${course.fullname || course.shortname || `Course ${course.id}`}`;
+
+                  if (shouldShowSplash) {
+                    setCurrentStep(stepMessage);
+                  } else {
+                    setSyncProgress(
+                      stepMessage,
+                      70 + (currentIndex / totalCourses) * 20,
                     );
                   }
-                } catch (attendanceError) {
-                  console.error(
-                    `Failed to fetch attendance for course ${course.id} after retries:`,
-                    attendanceError,
-                  );
-                }
 
-                if (shouldShowSplash) {
-                  const attendanceProgress =
-                    70 + (currentIndex / totalCourses) * 20;
-                  setLoadingProgress(attendanceProgress);
+                  try {
+                    // Set attendance syncing status for this course
+                    if (!shouldShowSplash) {
+                      setAttendanceSyncing(course.id, true);
+                    }
+
+                    const attendanceResponse = await retryWithBackoff(
+                      () => sessionAPI.getAttendance(course.id.toString()),
+                      3,
+                      1000,
+                      `Attendance for course ${course.shortname || course.id}`,
+                      (attempt, _delay) => {
+                        if (!shouldShowSplash) {
+                          setSyncProgress(
+                            `${course.shortname || `Course ${course.id}`} attendance retry ${attempt}/3...`,
+                            70 + (currentIndex / totalCourses) * 20,
+                          );
+                        }
+                      },
+                    );
+                    if (
+                      attendanceResponse.data?.success &&
+                      attendanceResponse.data?.attendance
+                    ) {
+                      setAttendance(
+                        course.id,
+                        attendanceResponse.data.attendance,
+                      );
+                    }
+
+                    // Clear attendance syncing status for this course
+                    if (!shouldShowSplash) {
+                      setAttendanceSyncing(course.id, false);
+                    }
+                  } catch (attendanceError) {
+                    console.error(
+                      `Failed to fetch attendance for course ${course.id} after retries:`,
+                      attendanceError,
+                    );
+                    // Clear syncing status even on error
+                    if (!shouldShowSplash) {
+                      setAttendanceSyncing(course.id, false);
+                    }
+                  }
+
+                  if (shouldShowSplash) {
+                    const attendanceProgress =
+                      70 + (currentIndex / totalCourses) * 20;
+                    setLoadingProgress(attendanceProgress);
+                  }
                 }
               }
+            } catch (coursesError) {
+              console.error("Failed to fetch courses:", coursesError);
+              // Clear courses syncing status on error
+              if (!shouldShowSplash) {
+                setCoursesSyncing(false);
+              }
             }
-          } catch (coursesError) {
-            console.error("Failed to fetch courses:", coursesError);
+          }
+        } catch (profileError) {
+          console.error("Failed to fetch user profile:", profileError);
+          // Clear profile syncing status on error
+          if (!shouldShowSplash) {
+            setProfileSyncing(false);
           }
         }
-      } catch (profileError) {
-        console.error("Failed to fetch user profile:", profileError);
-      }
 
-      if (shouldShowSplash) {
-        setCurrentStep("Finalizing...");
-        setLoadingProgress(100);
-      } else {
-        setSyncProgress("Sync complete", 100);
-        // Clear sync progress after a brief delay
-        setTimeout(() => clearSyncProgress(), 2000);
+        if (shouldShowSplash) {
+          setCurrentStep("Finalizing...");
+          setLoadingProgress(100);
+        } else {
+          setSyncProgress("Sync complete", 100);
+          // Clear all sync statuses and progress after a brief delay
+          setTimeout(() => {
+            clearSyncProgress();
+            clearAllSyncStatus();
+          }, 2000);
+        }
+      } catch {
+        clearSession();
+        clearUser();
+        clearSyncProgress();
+        clearAllSyncStatus();
+        router.push("/app/auth");
+      } finally {
+        if (shouldShowSplash) {
+          setLoading(false);
+          setUserLoading(false);
+          setIsInitializing(false);
+        }
+        // Reset the ref to allow future initializations if needed
+        initRef.current = false;
       }
-    } catch {
-      clearSession();
-      clearUser();
-      clearSyncProgress();
-      router.push("/app/auth");
-    } finally {
-      if (shouldShowSplash) {
-        setLoading(false);
-        setUserLoading(false);
-        setIsInitializing(false);
-      }
-      // Reset the ref to allow future initializations if needed
-      initRef.current = false;
-    }
-  }, [
-    session.token,
-    isBackgroundSyncing,
-    router,
-    clearSession,
-    clearUser,
-    setLoading,
-    setUserLoading,
-    setUser,
-    setCourses,
-    setAttendance,
-    setBackgroundSyncing,
-    setSyncProgress,
-    clearSyncProgress,
-  ]);
+    },
+    [
+      session.token,
+      isBackgroundSyncing,
+      router,
+      clearSession,
+      clearUser,
+      setLoading,
+      setUserLoading,
+      setUser,
+      setCourses,
+      setAttendance,
+      setBackgroundSyncing,
+      setSyncProgress,
+      clearSyncProgress,
+      setProfileSyncing,
+      setCoursesSyncing,
+      setAttendanceSyncing,
+      clearAllSyncStatus,
+    ],
+  );
 
   useEffect(() => {
     // Run initialization only once on mount
@@ -326,6 +406,28 @@ export function MoodleProvider({ children }: MoodleProviderProps) {
       onInit();
     }
   }, [onInit]);
+
+  // Watch for force sync requests
+  useEffect(() => {
+    if (forceSyncRequested && !isBackgroundSyncing) {
+      // Clear the force sync flag immediately
+      clearForceSync();
+
+      // Clear all data for fresh sync
+      clearAllSyncStatus();
+      clearUser();
+
+      // Trigger background sync (force sync = true means no splash screen)
+      onInit(true); // true = isForceSync
+    }
+  }, [
+    forceSyncRequested,
+    isBackgroundSyncing,
+    clearForceSync,
+    clearAllSyncStatus,
+    clearUser,
+    onInit,
+  ]);
 
   return (
     <>

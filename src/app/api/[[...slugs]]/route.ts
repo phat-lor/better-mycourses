@@ -732,7 +732,9 @@ const app = new Elysia({ prefix: "/api" })
         if (checkConditional(headers, etag)) {
           setCacheHeaders(set, CACHE_TTL.LONG, etag, true);
           set.status = 304;
-          return new Response(null, { status: 304 });
+          // For 304 responses, we need to return undefined to prevent body from being sent
+          // This satisfies the type system while ensuring no body is sent
+          return undefined as never;
         }
 
         setCacheHeaders(set, CACHE_TTL.LONG, etag, cached);

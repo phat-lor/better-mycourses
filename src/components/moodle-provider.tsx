@@ -36,7 +36,7 @@ async function retryWithBackoff<T>(
         throw lastError;
       }
 
-      const delay = baseDelay * Math.pow(2, attempt);
+      const delay = baseDelay * 2 ** attempt;
       console.warn(
         `${description} attempt ${attempt + 1} failed, retrying in ${delay}ms:`,
         error,

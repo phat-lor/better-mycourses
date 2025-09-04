@@ -1,46 +1,23 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type {
+  AssignmentComment,
+  AssignmentDates,
+  AssignmentGrading,
+  AssignmentInfo,
+  AssignmentSettings,
+  AssignmentSubmission,
+  CourseActivity,
+  CourseContent,
+  CourseSection,
+  QuizAttempt,
+  QuizInfo,
+  SubmissionFile,
+} from "./moodleParser";
 
 interface Attendance {
   date: string;
   status: string;
-}
-
-interface CourseActivity {
-  id: string;
-  name: string;
-  type: string;
-  moduleId: string;
-  url: string;
-  description?: string;
-  dueDate?: string;
-  openDate?: string;
-  closeDate?: string;
-  availability?: string;
-  icon?: string;
-}
-
-interface CourseSection {
-  id: string;
-  number: number;
-  name: string;
-  summary?: string;
-  activities: CourseActivity[];
-  collapsed?: boolean;
-}
-
-interface CourseContent {
-  sections: CourseSection[];
-  attendanceInfo?: {
-    current: number;
-    total: number;
-    percentage: number;
-  };
-  aiLevel?: {
-    level: number;
-    description: string;
-    color: string;
-  };
 }
 
 interface Course {
@@ -67,6 +44,9 @@ interface Course {
   coursecategory: string;
   attendance?: Attendance[];
   content?: CourseContent;
+  // Activity data caches
+  quizzes?: { [moduleId: string]: QuizInfo };
+  assignments?: { [moduleId: string]: AssignmentInfo };
 }
 
 interface User {
@@ -80,6 +60,7 @@ interface SyncStatus {
   profileSyncing: boolean;
   coursesSyncing: boolean;
   attendanceSyncing: { [courseId: number]: boolean };
+  activitySyncing: { [moduleId: string]: boolean };
 }
 
 interface UserState {
@@ -113,6 +94,18 @@ interface UserActions {
   setProfileSyncing: (syncing: boolean) => void;
   setCoursesSyncing: (syncing: boolean) => void;
   setAttendanceSyncing: (courseId: number, syncing: boolean) => void;
+  setActivitySyncing: (moduleId: string, syncing: boolean) => void;
+  setQuizInfo: (courseId: number, moduleId: string, quizInfo: QuizInfo) => void;
+  setAssignmentInfo: (
+    courseId: number,
+    moduleId: string,
+    assignmentInfo: AssignmentInfo,
+  ) => void;
+  updateActivityData: (
+    courseId: number,
+    moduleId: string,
+    data: { quizInfo?: QuizInfo; assignmentInfo?: AssignmentInfo },
+  ) => void;
   clearAllSyncStatus: () => void;
 }
 
@@ -128,6 +121,7 @@ const useUserStore = create<UserStore>()(
         profileSyncing: false,
         coursesSyncing: false,
         attendanceSyncing: {},
+        activitySyncing: {},
       },
 
       setUser: (user) => set({ user, error: null }),
@@ -329,6 +323,7 @@ const useUserStore = create<UserStore>()(
             profileSyncing: false,
             coursesSyncing: false,
             attendanceSyncing: {},
+            activitySyncing: {},
           },
         }),
 
@@ -359,12 +354,115 @@ const useUserStore = create<UserStore>()(
         });
       },
 
+      setActivitySyncing: (moduleId, syncing) => {
+        const { syncStatus } = get();
+        set({
+          syncStatus: {
+            ...syncStatus,
+            activitySyncing: {
+              ...syncStatus.activitySyncing,
+              [moduleId]: syncing,
+            },
+          },
+        });
+      },
+
+      setQuizInfo: (courseId, moduleId, quizInfo) => {
+        const { user } = get();
+        if (user) {
+          set({
+            user: {
+              ...user,
+              courses: user.courses.map((course) =>
+                course.id === courseId
+                  ? {
+                      ...course,
+                      quizzes: {
+                        ...course.quizzes,
+                        [moduleId]: quizInfo,
+                      },
+                    }
+                  : course,
+              ),
+            },
+          });
+        }
+      },
+
+      setAssignmentInfo: (courseId, moduleId, assignmentInfo) => {
+        const { user } = get();
+        if (user) {
+          set({
+            user: {
+              ...user,
+              courses: user.courses.map((course) =>
+                course.id === courseId
+                  ? {
+                      ...course,
+                      assignments: {
+                        ...course.assignments,
+                        [moduleId]: assignmentInfo,
+                      },
+                    }
+                  : course,
+              ),
+            },
+          });
+        }
+      },
+
+      updateActivityData: (courseId, moduleId, data) => {
+        const { user } = get();
+        if (user) {
+          set({
+            user: {
+              ...user,
+              courses: user.courses.map((course) => {
+                if (course.id === courseId && course.content) {
+                  return {
+                    ...course,
+                    content: {
+                      ...course.content,
+                      sections: course.content.sections.map((section) => ({
+                        ...section,
+                        activities: section.activities.map((activity) =>
+                          activity.moduleId === moduleId
+                            ? {
+                                ...activity,
+                                ...data,
+                              }
+                            : activity,
+                        ),
+                      })),
+                    },
+                    ...(data.quizInfo && {
+                      quizzes: {
+                        ...course.quizzes,
+                        [moduleId]: data.quizInfo,
+                      },
+                    }),
+                    ...(data.assignmentInfo && {
+                      assignments: {
+                        ...course.assignments,
+                        [moduleId]: data.assignmentInfo,
+                      },
+                    }),
+                  };
+                }
+                return course;
+              }),
+            },
+          });
+        }
+      },
+
       clearAllSyncStatus: () => {
         set({
           syncStatus: {
             profileSyncing: false,
             coursesSyncing: false,
             attendanceSyncing: {},
+            activitySyncing: {},
           },
         });
       },

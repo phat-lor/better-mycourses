@@ -1,3 +1,5 @@
-export default function CalendarPage() {
-  return <div>CalendarPage</div>;
+import { CalendarPage } from "@/components/calendar";
+
+export default function Calendar() {
+  return <CalendarPage />;
 }

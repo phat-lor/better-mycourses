@@ -77,6 +77,8 @@ export function MoodleProvider({ children }: MoodleProviderProps) {
     setUser,
     setCourses,
     setAttendance,
+    setCourseContent,
+    updateActivityData,
     clearUser,
     setProfileSyncing,
     setCoursesSyncing,
@@ -268,18 +270,19 @@ export function MoodleProvider({ children }: MoodleProviderProps) {
                   setCurrentStep(`Reading attendance 0/${totalCourses}`);
                 }
 
+                // Load attendance and course content for each course
                 for (let i = 0; i < courses.length; i++) {
                   const course = courses[i];
                   const currentIndex = i + 1;
 
-                  const stepMessage = `Reading attendance ${currentIndex}/${totalCourses} - ${course.fullname || course.shortname || `Course ${course.id}`}`;
+                  const stepMessage = `Loading data ${currentIndex}/${totalCourses} - ${course.fullname || course.shortname || `Course ${course.id}`}`;
 
                   if (shouldShowSplash) {
                     setCurrentStep(stepMessage);
                   } else {
                     setSyncProgress(
                       stepMessage,
-                      70 + (currentIndex / totalCourses) * 20,
+                      70 + (currentIndex / totalCourses) * 25,
                     );
                   }
 
@@ -289,38 +292,148 @@ export function MoodleProvider({ children }: MoodleProviderProps) {
                       setAttendanceSyncing(course.id, true);
                     }
 
-                    const attendanceResponse = await retryWithBackoff(
-                      () => sessionAPI.getAttendance(course.id.toString()),
-                      3,
-                      1000,
-                      `Attendance for course ${course.shortname || course.id}`,
-                      (attempt, _delay) => {
-                        if (!shouldShowSplash) {
-                          setSyncProgress(
-                            `${course.shortname || `Course ${course.id}`} attendance retry ${attempt}/3...`,
-                            70 + (currentIndex / totalCourses) * 20,
-                          );
-                        }
-                      },
-                    );
+                    // Load attendance and course content in parallel
+                    const [attendanceResponse, contentResponse] =
+                      await Promise.allSettled([
+                        retryWithBackoff(
+                          () => sessionAPI.getAttendance(course.id.toString()),
+                          3,
+                          1000,
+                          `Attendance for course ${course.shortname || course.id}`,
+                          (attempt, _delay) => {
+                            if (!shouldShowSplash) {
+                              setSyncProgress(
+                                `${course.shortname || `Course ${course.id}`} attendance retry ${attempt}/3...`,
+                                70 + (currentIndex / totalCourses) * 25,
+                              );
+                            }
+                          },
+                        ),
+                        retryWithBackoff(
+                          () =>
+                            sessionAPI.getCourseContent(course.id.toString()),
+                          3,
+                          1000,
+                          `Content for course ${course.shortname || course.id}`,
+                          (attempt, _delay) => {
+                            if (!shouldShowSplash) {
+                              setSyncProgress(
+                                `${course.shortname || `Course ${course.id}`} content retry ${attempt}/3...`,
+                                70 + (currentIndex / totalCourses) * 25,
+                              );
+                            }
+                          },
+                        ),
+                      ]);
+
+                    // Process attendance response
                     if (
-                      attendanceResponse.data?.success &&
-                      attendanceResponse.data?.attendance
+                      attendanceResponse.status === "fulfilled" &&
+                      attendanceResponse.value.data?.success &&
+                      attendanceResponse.value.data?.attendance
                     ) {
                       setAttendance(
                         course.id,
-                        attendanceResponse.data.attendance,
+                        attendanceResponse.value.data.attendance,
                       );
+                    }
+
+                    // Process course content response
+                    if (
+                      contentResponse.status === "fulfilled" &&
+                      contentResponse.value.data?.success &&
+                      contentResponse.value.data?.content
+                    ) {
+                      setCourseContent(
+                        course.id,
+                        contentResponse.value.data.content,
+                      );
+
+                      // Load detailed activity data for quizzes and assignments
+                      const content = contentResponse.value.data.content;
+                      const allActivities = content.sections.flatMap(
+                        (section) => section.activities,
+                      );
+                      const quizActivities = allActivities.filter(
+                        (activity) => activity.type === "quiz",
+                      );
+                      const assignmentActivities = allActivities.filter(
+                        (activity) => activity.type === "assign",
+                      );
+
+                      // Load quiz data in parallel
+                      if (quizActivities.length > 0) {
+                        const quizPromises = quizActivities.map(
+                          async (activity) => {
+                            try {
+                              const quizResponse = await sessionAPI.getQuizInfo(
+                                activity.moduleId,
+                              );
+                              if (
+                                quizResponse.data?.success &&
+                                quizResponse.data?.quiz
+                              ) {
+                                updateActivityData(
+                                  course.id,
+                                  activity.moduleId,
+                                  {
+                                    quizInfo: quizResponse.data.quiz,
+                                  },
+                                );
+                              }
+                            } catch (error) {
+                              console.error(
+                                `Failed to load quiz data for ${activity.name}:`,
+                                error,
+                              );
+                            }
+                          },
+                        );
+                        await Promise.allSettled(quizPromises);
+                      }
+
+                      // Load assignment data in parallel
+                      if (assignmentActivities.length > 0) {
+                        const assignmentPromises = assignmentActivities.map(
+                          async (activity) => {
+                            try {
+                              const assignmentResponse =
+                                await sessionAPI.getAssignmentInfo(
+                                  activity.moduleId,
+                                );
+                              if (
+                                assignmentResponse.data?.success &&
+                                assignmentResponse.data?.assignment
+                              ) {
+                                updateActivityData(
+                                  course.id,
+                                  activity.moduleId,
+                                  {
+                                    assignmentInfo:
+                                      assignmentResponse.data.assignment,
+                                  },
+                                );
+                              }
+                            } catch (error) {
+                              console.error(
+                                `Failed to load assignment data for ${activity.name}:`,
+                                error,
+                              );
+                            }
+                          },
+                        );
+                        await Promise.allSettled(assignmentPromises);
+                      }
                     }
 
                     // Clear attendance syncing status for this course
                     if (!shouldShowSplash) {
                       setAttendanceSyncing(course.id, false);
                     }
-                  } catch (attendanceError) {
+                  } catch (error) {
                     console.error(
-                      `Failed to fetch attendance for course ${course.id} after retries:`,
-                      attendanceError,
+                      `Failed to fetch data for course ${course.id} after retries:`,
+                      error,
                     );
                     // Clear syncing status even on error
                     if (!shouldShowSplash) {
@@ -329,9 +442,9 @@ export function MoodleProvider({ children }: MoodleProviderProps) {
                   }
 
                   if (shouldShowSplash) {
-                    const attendanceProgress =
-                      70 + (currentIndex / totalCourses) * 20;
-                    setLoadingProgress(attendanceProgress);
+                    const dataProgress =
+                      70 + (currentIndex / totalCourses) * 25;
+                    setLoadingProgress(dataProgress);
                   }
                 }
               }
@@ -389,6 +502,8 @@ export function MoodleProvider({ children }: MoodleProviderProps) {
       setUser,
       setCourses,
       setAttendance,
+      setCourseContent,
+      updateActivityData,
       setBackgroundSyncing,
       setSyncProgress,
       clearSyncProgress,

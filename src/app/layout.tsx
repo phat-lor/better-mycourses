@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import React from "react";
 import "./globals.css";
-import { Providers } from "@/components/providers";
+import { Providers } from "@/components/shared";
 
 export const metadata: Metadata = {
   title: {

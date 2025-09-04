@@ -1,3 +1,5 @@
-export default function AssignmentsPage() {
-  return <div>AssignmentsPage</div>;
+import { AssignmentsPage } from "@/components/assignments";
+
+export default function Assignments() {
+  return <AssignmentsPage />;
 }

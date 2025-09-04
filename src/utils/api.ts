@@ -94,6 +94,30 @@ export const sessionAPI = {
   },
 
   /**
+   * Get course content and structure (requires authentication)
+   */
+  async getCourseContent(courseId: string) {
+    const response = await api.api.course({ courseId }).content.get();
+    return response;
+  },
+
+  /**
+   * Get quiz information and attempts (requires authentication)
+   */
+  async getQuizInfo(quizId: string) {
+    const response = await api.api.quiz({ quizId }).get();
+    return response;
+  },
+
+  /**
+   * Get assignment information and submission status (requires authentication)
+   */
+  async getAssignmentInfo(assignmentId: string) {
+    const response = await api.api.assignment({ assignmentId }).get();
+    return response;
+  },
+
+  /**
    * Logout and clear JWT token
    */
   async logout() {

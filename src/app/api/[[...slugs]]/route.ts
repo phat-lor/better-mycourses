@@ -10,7 +10,9 @@ import {
   decodeHtmlEntities,
   extractAbsentRecords,
   extractAILevel,
+  extractAssignmentInfo,
   extractCourseContent,
+  extractQuizInfo,
   extractSesskey,
   extractUserProfile,
 } from "@/utils/moodleParser";
@@ -267,6 +269,18 @@ const CourseContentResponse = t.Object({
           syllabusData: t.Optional(
             t.Union([t.Array(SyllabusRowSchema), t.Null()]),
           ),
+          syllabusInfo: t.Optional(
+            t.Object({
+              type: t.Union([
+                t.Literal("table"),
+                t.Literal("pdf"),
+                t.Literal("none"),
+              ]),
+              data: t.Optional(t.Array(SyllabusRowSchema)),
+              pdfUrl: t.Optional(t.String()),
+              pdfName: t.Optional(t.String()),
+            }),
+          ),
         }),
       ),
       attendanceInfo: t.Optional(
@@ -303,6 +317,173 @@ const SessionLoginResponse = t.Object({
   token: t.Optional(t.String()),
   sesskey: t.Optional(t.String()),
   message: t.String(),
+  error: t.Optional(t.String()),
+});
+
+const QuizAttemptSchema = t.Object({
+  attemptNumber: t.Number(),
+  status: t.Union([
+    t.Literal("finished"),
+    t.Literal("in_progress"),
+    t.Literal("never_started"),
+    t.Literal("abandoned"),
+  ]),
+  startedOn: t.Optional(t.String()),
+  completedOn: t.Optional(t.String()),
+  timeTaken: t.Optional(t.String()),
+  grade: t.Optional(t.String()),
+  marks: t.Optional(t.String()),
+  scorePercentage: t.Optional(t.String()),
+  rawScore: t.Optional(t.String()),
+  maxScore: t.Optional(t.String()),
+  reviewUrl: t.Optional(t.String()),
+});
+
+const QuizResponse = t.Object({
+  success: t.Boolean(),
+  quiz: t.Optional(
+    t.Object({
+      quizId: t.String(),
+      quizName: t.String(),
+      courseId: t.String(),
+      description: t.Optional(t.String()),
+      attemptsAllowed: t.Number(),
+      gradingMethod: t.Optional(t.String()),
+      timeLimit: t.Optional(t.String()),
+      openDate: t.Optional(t.String()),
+      closeDate: t.Optional(t.String()),
+      dueDate: t.Optional(t.String()),
+      status: t.Union([
+        t.Literal("available"),
+        t.Literal("closed"),
+        t.Literal("not_started"),
+        t.Literal("completed"),
+      ]),
+      attempts: t.Array(QuizAttemptSchema),
+      currentAttempt: t.Optional(QuizAttemptSchema),
+      canAttempt: t.Boolean(),
+      finalGrade: t.Optional(t.String()),
+      totalMarks: t.Optional(t.String()),
+    }),
+  ),
+  message: t.Optional(t.String()),
+  error: t.Optional(t.String()),
+});
+
+const SubmissionFileSchema = t.Object({
+  name: t.String(),
+  url: t.Optional(t.String()),
+  size: t.Optional(t.String()),
+  type: t.Optional(t.String()),
+  uploadDate: t.Optional(t.String()),
+});
+
+const AssignmentCommentSchema = t.Object({
+  author: t.Optional(t.String()),
+  date: t.Optional(t.String()),
+  content: t.String(),
+});
+
+const AssignmentSettingsSchema = t.Object({
+  submissionTypes: t.Optional(t.Array(t.String())),
+  maxFileSize: t.Optional(t.String()),
+  maxFiles: t.Optional(t.Number()),
+  acceptedFileTypes: t.Optional(t.Array(t.String())),
+  requireClickSubmit: t.Optional(t.Boolean()),
+  requireAcceptance: t.Optional(t.Boolean()),
+  groupSubmission: t.Optional(t.Boolean()),
+  preventLateSubmissions: t.Optional(t.Boolean()),
+  notifyGraders: t.Optional(t.Boolean()),
+});
+
+const AssignmentDatesSchema = t.Object({
+  openDate: t.Optional(t.String()),
+  dueDate: t.Optional(t.String()),
+  cutoffDate: t.Optional(t.String()),
+  reminderDate: t.Optional(t.String()),
+  allowSubmissionsFrom: t.Optional(t.String()),
+  timeRemaining: t.Optional(t.String()),
+  isOverdue: t.Optional(t.Boolean()),
+  overdueBy: t.Optional(t.String()),
+});
+
+const AssignmentGradingSchema = t.Object({
+  gradingStatus: t.Union([
+    t.Literal("graded"),
+    t.Literal("not_graded"),
+    t.Literal("needs_grading"),
+  ]),
+  grade: t.Optional(t.String()),
+  maxGrade: t.Optional(t.String()),
+  gradePercentage: t.Optional(t.String()),
+  gradedBy: t.Optional(t.String()),
+  gradedDate: t.Optional(t.String()),
+  gradingScale: t.Optional(t.String()),
+  passingGrade: t.Optional(t.String()),
+  feedback: t.Optional(t.String()),
+  rubricGrade: t.Optional(t.String()),
+});
+
+const AssignmentSubmissionSchema = t.Object({
+  submissionStatus: t.Union([
+    t.Literal("submitted"),
+    t.Literal("draft"),
+    t.Literal("new"),
+    t.Literal("reopened"),
+    t.Literal("no_submission"),
+  ]),
+  attemptNumber: t.Optional(t.Number()),
+  submissionDate: t.Optional(t.String()),
+  lastModified: t.Optional(t.String()),
+  submissionMethod: t.Optional(t.String()),
+  files: t.Optional(t.Array(SubmissionFileSchema)),
+  textSubmission: t.Optional(t.String()),
+  onlineText: t.Optional(t.String()),
+  comments: t.Optional(t.Array(AssignmentCommentSchema)),
+  wordCount: t.Optional(t.Number()),
+  plagiarismStatus: t.Optional(t.String()),
+  turnitinScore: t.Optional(t.String()),
+});
+
+const AssignmentResponse = t.Object({
+  success: t.Boolean(),
+  assignment: t.Optional(
+    t.Object({
+      assignmentId: t.String(),
+      assignmentName: t.String(),
+      courseId: t.String(),
+      description: t.Optional(t.String()),
+      instructions: t.Optional(t.String()),
+
+      dates: AssignmentDatesSchema,
+      submission: AssignmentSubmissionSchema,
+      grading: AssignmentGradingSchema,
+      settings: AssignmentSettingsSchema,
+
+      attemptsAllowed: t.Optional(t.Number()),
+      attemptsUsed: t.Optional(t.Number()),
+      canSubmit: t.Optional(t.Boolean()),
+      canEdit: t.Optional(t.Boolean()),
+      hasExtension: t.Optional(t.Boolean()),
+      extensionDueDate: t.Optional(t.String()),
+
+      activityStatus: t.Optional(
+        t.Union([
+          t.Literal("open"),
+          t.Literal("closed"),
+          t.Literal("not_yet_open"),
+        ]),
+      ),
+      completionStatus: t.Optional(
+        t.Union([
+          t.Literal("complete"),
+          t.Literal("incomplete"),
+          t.Literal("not_attempted"),
+        ]),
+      ),
+    }),
+  ),
+  message: t.Optional(t.String()),
   error: t.Optional(t.String()),
 });
 
@@ -351,6 +532,14 @@ const app = new Elysia({ prefix: "/api" })
             description: "Course content and structure endpoints",
           },
           { name: "attendance", description: "Course attendance endpoints" },
+          {
+            name: "quiz",
+            description: "Quiz information and attempts endpoints",
+          },
+          {
+            name: "assignment",
+            description: "Assignment submission and grading endpoints",
+          },
         ],
         components: {
           securitySchemes: {
@@ -1229,6 +1418,133 @@ const app = new Elysia({ prefix: "/api" })
         error: t.Optional(t.String()),
       }),
       detail: { summary: "Get course syllabus structure", tags: ["course"] },
+    },
+  )
+
+  // Quiz endpoints
+  .get(
+    "/quiz/:quizId",
+    async ({ params, headers, jwt: jwtInstance, set }) => {
+      const authResult = await authMiddleware({
+        headers,
+        jwt: jwtInstance,
+        set,
+      });
+      if (!authResult.payload) return authResult;
+
+      try {
+        const { quizId } = params;
+        const { moodleSession } = authResult.payload;
+        const cacheKey = cache.userKey(moodleSession, `quiz-${quizId}`);
+
+        const { data, etag, cached } = await cache.withCache(
+          cacheKey,
+          async () => {
+            myCourses.defaults.headers.Cookie = `MoodleSession=${moodleSession}`;
+            const response = await myCourses.get(
+              `/mod/quiz/view.php?id=${quizId}`,
+            );
+
+            if (response.status === 302) {
+              throw new Error("Session expired");
+            }
+
+            const quizInfo = extractQuizInfo(response.data);
+            if (!quizInfo) {
+              throw new Error("Failed to parse quiz information");
+            }
+
+            return {
+              success: true,
+              quiz: quizInfo,
+            };
+          },
+          CACHE_TTL.SHORT, // Quizzes change more frequently than courses
+        );
+
+        setCacheHeaders(set, CACHE_TTL.SHORT, etag, cached);
+        return data;
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Quiz fetch failed",
+          message: "Failed to fetch quiz information",
+        };
+      }
+    },
+    {
+      params: t.Object({
+        quizId: t.String(),
+      }),
+      response: QuizResponse,
+      detail: { summary: "Get quiz information and attempts", tags: ["quiz"] },
+    },
+  )
+
+  // Assignment endpoints
+  .get(
+    "/assignment/:assignmentId",
+    async ({ params, headers, jwt: jwtInstance, set }) => {
+      const authResult = await authMiddleware({
+        headers,
+        jwt: jwtInstance,
+        set,
+      });
+      if (!authResult.payload) return authResult;
+
+      try {
+        const { assignmentId } = params;
+        const { moodleSession } = authResult.payload;
+        const cacheKey = cache.userKey(
+          moodleSession,
+          `assignment-${assignmentId}`,
+        );
+
+        const { data, etag, cached } = await cache.withCache(
+          cacheKey,
+          async () => {
+            myCourses.defaults.headers.Cookie = `MoodleSession=${moodleSession}`;
+            const response = await myCourses.get(
+              `/mod/assign/view.php?id=${assignmentId}`,
+            );
+
+            if (response.status === 302) {
+              throw new Error("Session expired");
+            }
+
+            const assignmentInfo = extractAssignmentInfo(response.data);
+            if (!assignmentInfo) {
+              throw new Error("Failed to parse assignment information");
+            }
+
+            return {
+              success: true,
+              assignment: assignmentInfo,
+            };
+          },
+          CACHE_TTL.SHORT, // Assignments change frequently
+        );
+
+        setCacheHeaders(set, CACHE_TTL.SHORT, etag, cached);
+        return data;
+      } catch (error) {
+        return {
+          success: false,
+          error:
+            error instanceof Error ? error.message : "Assignment fetch failed",
+          message: "Failed to fetch assignment information",
+        };
+      }
+    },
+    {
+      params: t.Object({
+        assignmentId: t.String(),
+      }),
+      response: AssignmentResponse,
+      detail: {
+        summary: "Get assignment information and submission status",
+        tags: ["assignment"],
+      },
     },
   );
 

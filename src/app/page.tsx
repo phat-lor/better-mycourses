@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Landing from "@/components/landing";
+import { Landing } from "@/components/shared";
 
 export const metadata: Metadata = {
   title: "Better MyCourses - Modern Moodle Interface",

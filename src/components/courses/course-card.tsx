@@ -19,6 +19,7 @@ import {
 import { Icon } from "@iconify/react";
 import { Eye, EyeOff, Heart, MoreHorizontal } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import useUserStore from "@/utils/userStore";
 
@@ -48,6 +49,7 @@ export default function CourseCard({
 }: CourseCardProps) {
   const { toggleCourseFavorite, toggleCourseHidden } = useUserStore();
   const [imageError, setImageError] = useState(false);
+  const router = useRouter();
 
   const handleFavoriteToggle = () => {
     toggleCourseFavorite(course.id);
@@ -55,6 +57,10 @@ export default function CourseCard({
 
   const handleHiddenToggle = () => {
     toggleCourseHidden(course.id);
+  };
+
+  const handleCardClick = () => {
+    router.push(`/app/courses/${course.id}`);
   };
 
   const attendancePercentage = course.attendance
@@ -225,7 +231,7 @@ export default function CourseCard({
                     <PopoverTrigger>
                       <button
                         type="button"
-                        className="flex-1 max-w-xs cursor-pointer bg-transparent border-none p-0 text-left hover:opacity-80 transition-opacity"
+                        className="flex-1 max-w-xs cursor-pointer bg-transparent border-none p-0 text-left hover:opacity-80 transition-opacity z-10 relative"
                         aria-label="Show attendance details"
                       >
                         <div className="flex items-center justify-between mb-1">
@@ -257,13 +263,33 @@ export default function CourseCard({
               </div>
             </div>
           </div>
+
+          {/* Clickable areas for card navigation - positioned to avoid attendance */}
+          <button
+            type="button"
+            className="absolute top-0 left-0 right-0 h-20 bg-transparent border-none p-0 cursor-pointer opacity-0 hover:opacity-100 transition-opacity z-0"
+            onClick={handleCardClick}
+            aria-label={`View details for ${course.fullname}`}
+          />
+          <button
+            type="button"
+            className="absolute top-20 left-0 right-0 h-16 bg-transparent border-none p-0 cursor-pointer opacity-0 hover:opacity-100 transition-opacity z-0"
+            onClick={handleCardClick}
+            aria-label={`View details for ${course.fullname}`}
+          />
+          <button
+            type="button"
+            className="absolute bottom-0 left-0 right-0 h-12 bg-transparent border-none p-0 cursor-pointer opacity-0 hover:opacity-100 transition-opacity z-0"
+            onClick={handleCardClick}
+            aria-label={`View details for ${course.fullname}`}
+          />
         </CardBody>
       </Card>
     );
   }
 
   return (
-    <Card className="w-full bg-card hover:bg-card/80 transition-colors border border-transparent hover:border-divider">
+    <Card className="w-full bg-card hover:bg-card/80 transition-colors border border-transparent hover:border-divider relative">
       <CardHeader className="p-0 relative">
         <div className="relative w-full aspect-video">
           {!imageError && course.courseimage ? (
@@ -284,7 +310,7 @@ export default function CourseCard({
             </div>
           )}
 
-          <div className="absolute top-3 right-3 flex items-center gap-2">
+          <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
             {course.isfavourite && (
               <div className="bg-white/90 dark:bg-black/90 backdrop-blur-sm rounded-full p-1">
                 <Icon
@@ -362,7 +388,7 @@ export default function CourseCard({
               <PopoverTrigger>
                 <button
                   type="button"
-                  className="cursor-pointer bg-transparent border-none p-0 w-full text-left hover:opacity-80 transition-opacity"
+                  className="cursor-pointer bg-transparent border-none p-0 w-full text-left hover:opacity-80 transition-opacity z-10 relative"
                   aria-label="Show attendance details"
                 >
                   <div className="flex items-center justify-between mb-1">
@@ -376,6 +402,7 @@ export default function CourseCard({
                   <Progress
                     value={attendancePercentage}
                     size="sm"
+                    className="w-full"
                     color={
                       attendancePercentage >= 80
                         ? "success"
@@ -393,6 +420,26 @@ export default function CourseCard({
           )}
         </div>
       </CardBody>
+
+      {/* Clickable areas for card navigation - positioned to avoid attendance */}
+      <button
+        type="button"
+        className="absolute top-0 left-0 right-0 h-32 bg-transparent border-none p-0 cursor-pointer opacity-0 hover:opacity-100 transition-opacity z-0"
+        onClick={handleCardClick}
+        aria-label={`View details for ${course.fullname}`}
+      />
+      <button
+        type="button"
+        className="absolute top-32 left-0 right-0 h-20 bg-transparent border-none p-0 cursor-pointer opacity-0 hover:opacity-100 transition-opacity z-0"
+        onClick={handleCardClick}
+        aria-label={`View details for ${course.fullname}`}
+      />
+      <button
+        type="button"
+        className="absolute bottom-0 left-0 right-0 h-16 bg-transparent border-none p-0 cursor-pointer opacity-0 hover:opacity-100 transition-opacity z-0"
+        onClick={handleCardClick}
+        aria-label={`View details for ${course.fullname}`}
+      />
     </Card>
   );
 }

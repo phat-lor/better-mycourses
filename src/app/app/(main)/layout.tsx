@@ -1,5 +1,6 @@
-import AppShell from "@/components/app-shell";
-import { MoodleProvider } from "@/components/moodle-provider";
+import React from "react";
+import { AppShell } from "@/components/layout";
+import { MoodleProvider } from "@/components/shared";
 
 export default function DashboardLayout({
   children,

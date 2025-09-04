@@ -17,7 +17,15 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/pluginfile.php/**",
       },
+      {
+        protocol: "https",
+        hostname: "mycourses.ict.mahidol.ac.th",
+        port: "",
+        pathname: "/theme/image.php/**",
+      },
     ],
+    dangerouslyAllowSVG: true,
+    unoptimized: true,
   },
 };
 

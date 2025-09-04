@@ -3,9 +3,8 @@
 import { Button, Link } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Github } from "lucide-react";
-import BasicNavbar from "./basic-navbar";
-import BeforeAfterSlider from "./before-after-slider";
-import FadeInImage from "./fade-in-image";
+import { BasicNavbar } from "@/components/layout";
+import { BeforeAfterSlider, FadeInImage } from "@/components/ui";
 
 export default function Landing() {
   return (

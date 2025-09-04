@@ -3,7 +3,7 @@
 import { Progress } from "@heroui/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { sessionAPI } from "@/utils/api";
 import useSessionStore from "@/utils/sessionStore";
 import useUserStore from "@/utils/userStore";
@@ -12,13 +12,64 @@ interface MoodleProviderProps {
   children: React.ReactNode;
 }
 
+// Retry utility function with exponential backoff
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000,
+  description: string = "operation",
+  onRetry?: (attempt: number, delay: number) => void,
+): Promise<T> {
+  let lastError: Error = new Error("Unknown error");
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+
+      if (attempt === maxRetries) {
+        console.error(
+          `${description} failed after ${maxRetries + 1} attempts:`,
+          error,
+        );
+        throw lastError;
+      }
+
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.warn(
+        `${description} attempt ${attempt + 1} failed, retrying in ${delay}ms:`,
+        error,
+      );
+
+      if (onRetry) {
+        onRetry(attempt + 1, delay);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError;
+}
+
 export function MoodleProvider({ children }: MoodleProviderProps) {
   const router = useRouter();
   const [isInitializing, setIsInitializing] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState("Initializing...");
+  const initRef = useRef(false);
+  const mountedRef = useRef(false);
 
-  const { session, clearSession, setLoading } = useSessionStore();
+  const {
+    session,
+    clearSession,
+    setLoading,
+    isBackgroundSyncing,
+    setBackgroundSyncing,
+    setSyncProgress,
+    clearSyncProgress,
+  } = useSessionStore();
   const {
     setLoading: setUserLoading,
     setUser,
@@ -28,18 +79,52 @@ export function MoodleProvider({ children }: MoodleProviderProps) {
   } = useUserStore();
 
   const onInit = useCallback(async () => {
-    setLoading(true);
-    setUserLoading(true);
-    setLoadingProgress(10);
-    setCurrentStep("Checking session...");
+    // Prevent multiple simultaneous initializations
+    if (initRef.current || isBackgroundSyncing) return;
+    initRef.current = true;
+
+    // Check if we have existing user data in localStorage
+    // We'll get fresh user state inside the function to avoid dependencies
+    const currentUser = useUserStore.getState().user;
+    const hasExistingData =
+      currentUser?.courses && currentUser.courses.length > 0;
+    const shouldShowSplash = !hasExistingData;
+
+    if (shouldShowSplash) {
+      setLoading(true);
+      setUserLoading(true);
+      setLoadingProgress(10);
+      setCurrentStep("Checking session...");
+    } else {
+      // Skip splash, sync in background
+      setIsInitializing(false);
+      setBackgroundSyncing(true);
+      setSyncProgress("Checking session...", 10);
+    }
 
     try {
-      const response = await sessionAPI.checkSession();
-      setLoadingProgress(20);
+      const response = await retryWithBackoff(
+        () => sessionAPI.checkSession(),
+        3,
+        1000,
+        "Session check",
+        (attempt, _delay) => {
+          if (!shouldShowSplash) {
+            setSyncProgress(`Session check retry ${attempt}/3...`, 10);
+          }
+        },
+      );
+
+      if (shouldShowSplash) {
+        setLoadingProgress(20);
+      } else {
+        setSyncProgress("Session verified", 20);
+      }
 
       if (!response.data?.success || !response.data?.isAuthenticated) {
         clearSession();
         clearUser();
+        clearSyncProgress();
         router.push("/app/auth");
         return;
       }
@@ -51,30 +136,69 @@ export function MoodleProvider({ children }: MoodleProviderProps) {
         }
       }
 
-      setLoadingProgress(30);
-      setCurrentStep("Fetching user profile...");
+      if (shouldShowSplash) {
+        setLoadingProgress(30);
+        setCurrentStep("Fetching user profile...");
+      } else {
+        setSyncProgress("Updating profile...", 30);
+      }
 
       // Fetch user profile data when authenticated
       try {
-        const profileResponse = await sessionAPI.getUserProfile();
-        setLoadingProgress(40);
-        setCurrentStep("Processing profile data...");
+        const profileResponse = await retryWithBackoff(
+          () => sessionAPI.getUserProfile(),
+          3,
+          1000,
+          "User profile",
+          (attempt, _delay) => {
+            if (!shouldShowSplash) {
+              setSyncProgress(`Profile retry ${attempt}/3...`, 30);
+            }
+          },
+        );
+
+        if (shouldShowSplash) {
+          setLoadingProgress(40);
+          setCurrentStep("Processing profile data...");
+        } else {
+          setSyncProgress("Profile updated", 40);
+        }
 
         if (profileResponse.data?.success && profileResponse.data?.profile) {
           setUser({
             firstName: profileResponse.data.profile.firstName,
             lastName: profileResponse.data.profile.lastName,
             email: profileResponse.data.profile.email,
-            courses: [],
+            courses: hasExistingData ? currentUser.courses : [],
           });
 
-          setLoadingProgress(50);
-          setCurrentStep("Fetching courses list...");
+          if (shouldShowSplash) {
+            setLoadingProgress(50);
+            setCurrentStep("Fetching courses list...");
+          } else {
+            setSyncProgress("Syncing courses...", 50);
+          }
+
           // Fetch courses data
           try {
-            const coursesResponse = await sessionAPI.getCourses();
-            setLoadingProgress(60);
-            setCurrentStep("Processing courses data...");
+            const coursesResponse = await retryWithBackoff(
+              () => sessionAPI.getCourses(),
+              3,
+              1000,
+              "Courses list",
+              (attempt, _delay) => {
+                if (!shouldShowSplash) {
+                  setSyncProgress(`Courses retry ${attempt}/3...`, 50);
+                }
+              },
+            );
+
+            if (shouldShowSplash) {
+              setLoadingProgress(60);
+              setCurrentStep("Processing courses data...");
+            } else {
+              setSyncProgress("Courses synced", 60);
+            }
 
             if (
               coursesResponse.data?.success &&
@@ -83,22 +207,48 @@ export function MoodleProvider({ children }: MoodleProviderProps) {
               const courses = coursesResponse.data.courses;
               setCourses(courses);
 
-              setLoadingProgress(70);
+              if (shouldShowSplash) {
+                setLoadingProgress(70);
+              } else {
+                setSyncProgress("Syncing attendance...", 70);
+              }
+
               // Fetch attendance data for each course with detailed progress
               const totalCourses = courses.length;
-              setCurrentStep(`Reading attendance 0/${totalCourses}`);
+
+              if (shouldShowSplash) {
+                setCurrentStep(`Reading attendance 0/${totalCourses}`);
+              }
 
               for (let i = 0; i < courses.length; i++) {
                 const course = courses[i];
                 const currentIndex = i + 1;
 
-                setCurrentStep(
-                  `Reading attendance ${currentIndex}/${totalCourses} - ${course.fullname || course.shortname || `Course ${course.id}`}`,
-                );
+                const stepMessage = `Reading attendance ${currentIndex}/${totalCourses} - ${course.fullname || course.shortname || `Course ${course.id}`}`;
+
+                if (shouldShowSplash) {
+                  setCurrentStep(stepMessage);
+                } else {
+                  setSyncProgress(
+                    stepMessage,
+                    70 + (currentIndex / totalCourses) * 20,
+                  );
+                }
 
                 try {
-                  const attendanceResponse = await sessionAPI.getAttendance(
-                    course.id.toString(),
+                  const attendanceResponse = await retryWithBackoff(
+                    () => sessionAPI.getAttendance(course.id.toString()),
+                    3,
+                    1000,
+                    `Attendance for course ${course.shortname || course.id}`,
+                    (attempt, _delay) => {
+                      if (!shouldShowSplash) {
+                        setSyncProgress(
+                          `${course.shortname || `Course ${course.id}`} attendance retry ${attempt}/3...`,
+                          70 + (currentIndex / totalCourses) * 20,
+                        );
+                      }
+                    },
                   );
                   if (
                     attendanceResponse.data?.success &&
@@ -111,14 +261,16 @@ export function MoodleProvider({ children }: MoodleProviderProps) {
                   }
                 } catch (attendanceError) {
                   console.error(
-                    `Failed to fetch attendance for course ${course.id}:`,
+                    `Failed to fetch attendance for course ${course.id} after retries:`,
                     attendanceError,
                   );
                 }
 
-                const attendanceProgress =
-                  70 + (currentIndex / totalCourses) * 20;
-                setLoadingProgress(attendanceProgress);
+                if (shouldShowSplash) {
+                  const attendanceProgress =
+                    70 + (currentIndex / totalCourses) * 20;
+                  setLoadingProgress(attendanceProgress);
+                }
               }
             }
           } catch (coursesError) {
@@ -129,31 +281,50 @@ export function MoodleProvider({ children }: MoodleProviderProps) {
         console.error("Failed to fetch user profile:", profileError);
       }
 
-      setCurrentStep("Finalizing...");
-      setLoadingProgress(100);
+      if (shouldShowSplash) {
+        setCurrentStep("Finalizing...");
+        setLoadingProgress(100);
+      } else {
+        setSyncProgress("Sync complete", 100);
+        // Clear sync progress after a brief delay
+        setTimeout(() => clearSyncProgress(), 2000);
+      }
     } catch {
       clearSession();
       clearUser();
+      clearSyncProgress();
       router.push("/app/auth");
     } finally {
-      setLoading(false);
-      setUserLoading(false);
-      setIsInitializing(false);
+      if (shouldShowSplash) {
+        setLoading(false);
+        setUserLoading(false);
+        setIsInitializing(false);
+      }
+      // Reset the ref to allow future initializations if needed
+      initRef.current = false;
     }
   }, [
+    session.token,
+    isBackgroundSyncing,
+    router,
     clearSession,
     clearUser,
-    router,
-    session.token,
     setLoading,
     setUserLoading,
     setUser,
     setCourses,
     setAttendance,
+    setBackgroundSyncing,
+    setSyncProgress,
+    clearSyncProgress,
   ]);
 
   useEffect(() => {
-    onInit();
+    // Run initialization only once on mount
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      onInit();
+    }
   }, [onInit]);
 
   return (

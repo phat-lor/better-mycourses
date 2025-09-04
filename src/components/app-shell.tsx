@@ -7,6 +7,7 @@ import {
   Breadcrumbs,
   Button,
   Chip,
+  cn,
   Dropdown,
   DropdownItem,
   DropdownMenu,
@@ -20,6 +21,10 @@ import {
   NavbarMenu,
   NavbarMenuItem,
   NavbarMenuToggle,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Progress,
   ScrollShadow,
   Tab,
   Tabs,
@@ -28,6 +33,7 @@ import {
 import { Icon } from "@iconify/react";
 import { FastForward } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import useSessionStore from "@/utils/sessionStore";
 import useUserStore from "@/utils/userStore";
 import { ThemeSwitcher } from "./theme-switcher";
 
@@ -36,7 +42,8 @@ interface AppShellProps {
 }
 
 export default function AppShell({ children }: AppShellProps) {
-  const { user } = useUserStore();
+  const { user, clearUser } = useUserStore();
+  const { clearSession, isBackgroundSyncing, syncProgress } = useSessionStore();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -57,6 +64,12 @@ export default function AppShell({ children }: AppShellProps) {
     if (route) {
       router.push(route.href);
     }
+  };
+
+  const handleLogout = () => {
+    clearSession();
+    clearUser();
+    router.push("/app/auth");
   };
 
   return (
@@ -161,7 +174,11 @@ export default function AppShell({ children }: AppShellProps) {
                   </p>
                 </DropdownItem>
                 <DropdownItem key="settings">My Settings</DropdownItem>
-                <DropdownItem key="logout" color="danger">
+                <DropdownItem
+                  key="logout"
+                  color="danger"
+                  onPress={handleLogout}
+                >
                   Log Out
                 </DropdownItem>
               </DropdownMenu>
@@ -234,15 +251,67 @@ export default function AppShell({ children }: AppShellProps) {
             ))}
           </Tabs>
           <div className="flex items-center gap-4">
-            <Tooltip content="Quick actions" placement="bottom">
-              <Button isIconOnly radius="full" size="sm" variant="faded">
-                <Icon
-                  className="text-default-500"
-                  icon="lucide:plus"
-                  width={16}
-                />
-              </Button>
-            </Tooltip>
+            {isBackgroundSyncing ? (
+              <Popover placement="bottom-end" showArrow>
+                <PopoverTrigger>
+                  <Button
+                    radius="full"
+                    size="sm"
+                    variant="ghost"
+                    startContent={
+                      <div
+                        className={cn(
+                          "w-2 h-2 bg-blue-500 rounded-full animate-pulse",
+                        )}
+                      />
+                    }
+                  >
+                    Syncing...
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72">
+                  <div className="px-3 py-3">
+                    <div className="text-small font-bold mb-3">
+                      Background Sync
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <div className="text-tiny font-medium">
+                          {syncProgress.currentStep}
+                        </div>
+                        <div className="text-tiny text-foreground/60">
+                          {Math.round(syncProgress.progress)}%
+                        </div>
+                      </div>
+                      <Progress
+                        value={syncProgress.progress}
+                        color="primary"
+                        size="sm"
+                        className="w-full"
+                      />
+                      {syncProgress.details && (
+                        <div className="text-xs text-foreground/50">
+                          {syncProgress.details}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Tooltip content="All data synchronized" placement="bottom">
+                <Button
+                  radius="full"
+                  size="sm"
+                  variant="ghost"
+                  startContent={
+                    <div className={cn("w-2 h-2 bg-green-500 rounded-full")} />
+                  }
+                >
+                  Synced
+                </Button>
+              </Tooltip>
+            )}
           </div>
         </ScrollShadow>
       </div>

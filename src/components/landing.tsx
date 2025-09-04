@@ -62,6 +62,9 @@ export default function Landing() {
               }
               radius="full"
               variant="bordered"
+              onPress={() => {
+                window.location.href = "/app";
+              }}
             >
               Get Started
             </Button>
@@ -75,6 +78,8 @@ export default function Landing() {
         <FadeInImage
           alt="Gradient background"
           src="data:image/svg+xml,%3Csvg width='1200' height='800' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3CradialGradient id='grad' cx='50%25' cy='50%25' r='50%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea%3Bstop-opacity:0.1'/%3E%3Cstop offset='100%25' style='stop-color:%23764ba2%3Bstop-opacity:0.05'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='url(%23grad)'/%3E%3C/svg%3E"
+          width={1200}
+          height={800}
         />
       </div>
     </div>

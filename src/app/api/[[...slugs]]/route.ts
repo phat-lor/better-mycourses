@@ -339,8 +339,8 @@ const app = new Elysia({ prefix: "/api" })
             description: "Development server",
           },
           {
-            url: "http://localhost:3001",
-            description: "Alternative development server",
+            url: "https://mycourses.phatlor.me/",
+            description: "Production server",
           },
         ],
         tags: [

@@ -11,8 +11,10 @@ import {
   DropdownItem,
   DropdownMenu,
   DropdownTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Progress,
-  Tooltip,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Eye, EyeOff, Heart, MoreHorizontal } from "lucide-react";
@@ -64,6 +66,57 @@ export default function CourseCard({
           100,
       )
     : 0;
+
+  const AttendancePopoverContent = () => (
+    <div className="px-2 py-2 max-w-xs">
+      <div className="text-small font-bold mb-2">
+        {course.shortname} Attendance
+      </div>
+      <div className="space-y-1.5">
+        <div className="flex justify-between items-center">
+          <div className="text-tiny font-medium">{course.fullname}</div>
+          <div className="text-tiny text-foreground/60">
+            {
+              course.attendance?.filter(
+                (session) => session.status.toLowerCase() === "attend",
+              ).length
+            }
+            /{course.attendance?.length} ({attendancePercentage}%)
+          </div>
+        </div>
+        <Progress
+          value={attendancePercentage}
+          color={
+            attendancePercentage >= 80
+              ? "success"
+              : attendancePercentage >= 60
+                ? "warning"
+                : "danger"
+          }
+          size="sm"
+          className="w-full"
+        />
+        <div className="flex flex-wrap gap-1 mt-2">
+          {course.attendance?.map((session, idx) => (
+            <div
+              key={`${session.date}-${idx}`}
+              className={cn(
+                "w-3 h-3 rounded-full text-xs flex items-center justify-center",
+                {
+                  "bg-success-500": session.status.toLowerCase() === "attend",
+                  "bg-danger-500": session.status.toLowerCase() === "absent",
+                  "bg-default-300": !["attend", "absent"].includes(
+                    session.status.toLowerCase(),
+                  ),
+                },
+              )}
+              title={`${session.date}: ${session.status}`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
   if (variant === "list") {
     return (
@@ -168,88 +221,38 @@ export default function CourseCard({
 
               <div className="flex items-center gap-6">
                 {course.attendance && course.attendance.length > 0 && (
-                  <Tooltip
-                    content={
-                      <div className="px-2 py-2 max-w-xs">
-                        <div className="text-small font-bold mb-2">
-                          {course.shortname} Attendance
+                  <Popover placement="bottom" showArrow>
+                    <PopoverTrigger>
+                      <button
+                        type="button"
+                        className="flex-1 max-w-xs cursor-pointer bg-transparent border-none p-0 text-left hover:opacity-80 transition-opacity"
+                        aria-label="Show attendance details"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-foreground/60">
+                            Attendance
+                          </span>
+                          <span className="text-xs text-foreground/60">
+                            {attendancePercentage}%
+                          </span>
                         </div>
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-center">
-                            <div className="text-tiny font-medium">
-                              {course.fullname}
-                            </div>
-                            <div className="text-tiny text-foreground/60">
-                              {
-                                course.attendance.filter(
-                                  (session) =>
-                                    session.status.toLowerCase() === "attend",
-                                ).length
-                              }
-                              /{course.attendance.length} (
-                              {attendancePercentage}%)
-                            </div>
-                          </div>
-                          <Progress
-                            value={attendancePercentage}
-                            color={
-                              attendancePercentage >= 80
-                                ? "success"
-                                : attendancePercentage >= 60
-                                  ? "warning"
-                                  : "danger"
-                            }
-                            size="sm"
-                            className="w-full"
-                          />
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {course.attendance.map((session, idx) => (
-                              <div
-                                key={`${session.date}-${idx}`}
-                                className={cn(
-                                  "w-3 h-3 rounded-full text-xs flex items-center justify-center",
-                                  {
-                                    "bg-success-500":
-                                      session.status.toLowerCase() === "attend",
-                                    "bg-danger-500":
-                                      session.status.toLowerCase() === "absent",
-                                    "bg-default-300": ![
-                                      "attend",
-                                      "absent",
-                                    ].includes(session.status.toLowerCase()),
-                                  },
-                                )}
-                                title={`${session.date}: ${session.status}`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    }
-                    placement="bottom"
-                  >
-                    <div className="flex-1 max-w-xs cursor-pointer">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-foreground/60">
-                          Attendance
-                        </span>
-                        <span className="text-xs text-foreground/60">
-                          {attendancePercentage}%
-                        </span>
-                      </div>
-                      <Progress
-                        value={attendancePercentage}
-                        size="sm"
-                        color={
-                          attendancePercentage >= 80
-                            ? "success"
-                            : attendancePercentage >= 60
-                              ? "warning"
-                              : "danger"
-                        }
-                      />
-                    </div>
-                  </Tooltip>
+                        <Progress
+                          value={attendancePercentage}
+                          size="sm"
+                          color={
+                            attendancePercentage >= 80
+                              ? "success"
+                              : attendancePercentage >= 60
+                                ? "warning"
+                                : "danger"
+                          }
+                        />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent>
+                      <AttendancePopoverContent />
+                    </PopoverContent>
+                  </Popover>
                 )}
               </div>
             </div>
@@ -338,11 +341,12 @@ export default function CourseCard({
 
       <CardBody className="p-4">
         <div className="mb-3">
-          <Tooltip content={course.fullname}>
-            <h3 className="text-lg font-semibold text-foreground line-clamp-2 leading-tight">
-              {course.fullname}
-            </h3>
-          </Tooltip>
+          <h3
+            className="text-lg font-semibold text-foreground line-clamp-2 leading-tight"
+            title={course.fullname}
+          >
+            {course.fullname}
+          </h3>
           <p className="text-sm text-foreground/60 mt-1">{course.shortname}</p>
         </div>
 
@@ -354,84 +358,38 @@ export default function CourseCard({
 
         <div className="space-y-3">
           {course.attendance && course.attendance.length > 0 && (
-            <Tooltip
-              content={
-                <div className="px-2 py-2 max-w-xs">
-                  <div className="text-small font-bold mb-2">
-                    {course.shortname} Attendance
+            <Popover placement="bottom" showArrow>
+              <PopoverTrigger>
+                <button
+                  type="button"
+                  className="cursor-pointer bg-transparent border-none p-0 w-full text-left hover:opacity-80 transition-opacity"
+                  aria-label="Show attendance details"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-foreground/60">
+                      Attendance
+                    </span>
+                    <span className="text-xs text-foreground/60">
+                      {attendancePercentage}%
+                    </span>
                   </div>
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between items-center">
-                      <div className="text-tiny font-medium">
-                        {course.fullname}
-                      </div>
-                      <div className="text-tiny text-foreground/60">
-                        {
-                          course.attendance.filter(
-                            (session) =>
-                              session.status.toLowerCase() === "attend",
-                          ).length
-                        }
-                        /{course.attendance.length} ({attendancePercentage}%)
-                      </div>
-                    </div>
-                    <Progress
-                      value={attendancePercentage}
-                      color={
-                        attendancePercentage >= 80
-                          ? "success"
-                          : attendancePercentage >= 60
-                            ? "warning"
-                            : "danger"
-                      }
-                      size="sm"
-                      className="w-full"
-                    />
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {course.attendance.map((session, idx) => (
-                        <div
-                          key={`${session.date}-${idx}`}
-                          className={cn(
-                            "w-3 h-3 rounded-full text-xs flex items-center justify-center",
-                            {
-                              "bg-success-500":
-                                session.status.toLowerCase() === "attend",
-                              "bg-danger-500":
-                                session.status.toLowerCase() === "absent",
-                              "bg-default-300": !["attend", "absent"].includes(
-                                session.status.toLowerCase(),
-                              ),
-                            },
-                          )}
-                          title={`${session.date}: ${session.status}`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              }
-              placement="bottom"
-            >
-              <div className="cursor-pointer">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-foreground/60">Attendance</span>
-                  <span className="text-xs text-foreground/60">
-                    {attendancePercentage}%
-                  </span>
-                </div>
-                <Progress
-                  value={attendancePercentage}
-                  size="sm"
-                  color={
-                    attendancePercentage >= 80
-                      ? "success"
-                      : attendancePercentage >= 60
-                        ? "warning"
-                        : "danger"
-                  }
-                />
-              </div>
-            </Tooltip>
+                  <Progress
+                    value={attendancePercentage}
+                    size="sm"
+                    color={
+                      attendancePercentage >= 80
+                        ? "success"
+                        : attendancePercentage >= 60
+                          ? "warning"
+                          : "danger"
+                    }
+                  />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent>
+                <AttendancePopoverContent />
+              </PopoverContent>
+            </Popover>
           )}
         </div>
       </CardBody>

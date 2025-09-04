@@ -732,7 +732,7 @@ const app = new Elysia({ prefix: "/api" })
         if (checkConditional(headers, etag)) {
           setCacheHeaders(set, CACHE_TTL.LONG, etag, true);
           set.status = 304;
-          return { success: true, message: "Not modified" };
+          return new Response(null, { status: 304 });
         }
 
         setCacheHeaders(set, CACHE_TTL.LONG, etag, cached);

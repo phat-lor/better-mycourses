@@ -34,7 +34,7 @@ import { FastForward } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import useSessionStore from "@/utils/sessionStore";
 import useUserStore from "@/utils/userStore";
-import { ThemeSwitcher } from "./theme-switcher";
+import { ThemeSwitcher } from "./layout/theme-switcher";
 
 interface AppShellProps {
   children: React.ReactNode;

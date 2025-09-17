@@ -231,78 +231,82 @@ export default function GlobalAssignmentsPage() {
   }, [courses]);
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-8">
+    <div className="container mx-auto max-w-7xl px-4 py-4 sm:py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-foreground mb-2">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-semibold text-foreground mb-2">
           All Assignments
         </h1>
-        <p className="text-foreground/60">
+        <p className="text-sm sm:text-base text-foreground/60">
           Track and manage assignments across all your courses
         </p>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
         <Card className="border border-danger/20 bg-danger/5">
-          <CardBody className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-danger/10 rounded-lg">
-                <AlertCircle className="w-5 h-5 text-danger" />
+          <CardBody className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-danger/10 rounded-lg shrink-0">
+                <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-danger" />
               </div>
-              <div>
-                <p className="text-2xl font-semibold text-danger">
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-semibold text-danger">
                   {stats.overdue}
                 </p>
-                <p className="text-sm text-foreground/60">Overdue</p>
+                <p className="text-xs sm:text-sm text-foreground/60">Overdue</p>
               </div>
             </div>
           </CardBody>
         </Card>
 
         <Card className="border border-warning/20 bg-warning/5">
-          <CardBody className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-warning/10 rounded-lg">
-                <Clock className="w-5 h-5 text-warning" />
+          <CardBody className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-warning/10 rounded-lg shrink-0">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
               </div>
-              <div>
-                <p className="text-2xl font-semibold text-warning">
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-semibold text-warning">
                   {stats.dueSoon}
                 </p>
-                <p className="text-sm text-foreground/60">Due Soon</p>
+                <p className="text-xs sm:text-sm text-foreground/60">
+                  Due Soon
+                </p>
               </div>
             </div>
           </CardBody>
         </Card>
 
         <Card className="border border-success/20 bg-success/5">
-          <CardBody className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-success/10 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-success" />
+          <CardBody className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-success/10 rounded-lg shrink-0">
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-success" />
               </div>
-              <div>
-                <p className="text-2xl font-semibold text-success">
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-semibold text-success">
                   {stats.completed}
                 </p>
-                <p className="text-sm text-foreground/60">Completed</p>
+                <p className="text-xs sm:text-sm text-foreground/60">
+                  Completed
+                </p>
               </div>
             </div>
           </CardBody>
         </Card>
 
         <Card className="border border-primary/20 bg-primary/5">
-          <CardBody className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <BookOpen className="w-5 h-5 text-primary" />
+          <CardBody className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
+                <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               </div>
-              <div>
-                <p className="text-2xl font-semibold text-primary">
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-semibold text-primary">
                   {stats.open}
                 </p>
-                <p className="text-sm text-foreground/60">Open</p>
+                <p className="text-xs sm:text-sm text-foreground/60">Open</p>
               </div>
             </div>
           </CardBody>
@@ -421,88 +425,107 @@ export default function GlobalAssignmentsPage() {
       </Card>
 
       {/* Assignments List */}
-      <Card className="border border-divider">
-        <CardBody className="p-0">
-          <div className="divide-y divide-divider">
-            {filteredAssignments.map((assignment, index) => (
-              <div
-                key={generateUniqueKey(assignment, index)}
-                className="flex items-center justify-between p-4 hover:bg-content2/50 transition-colors"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-3 mb-1">
-                    <p
-                      className="font-medium text-foreground truncate"
-                      title={assignment.name}
-                    >
+      <div className="space-y-4">
+        {filteredAssignments.map((assignment, index) => (
+          <Card
+            key={generateUniqueKey(assignment, index)}
+            className="border border-divider hover:border-primary/20 transition-all duration-200 hover:shadow-md"
+          >
+            <CardBody className="p-4 sm:p-6">
+              <div className="flex flex-col space-y-4">
+                {/* Header Row */}
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-foreground text-base sm:text-lg leading-tight mb-2">
                       {assignment.name}
-                    </p>
+                    </h3>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                      <div className="flex items-center gap-2 text-sm text-foreground/70">
+                        <BookOpen size={14} className="shrink-0" />
+                        <span className="font-medium">
+                          {assignment.courseShortName}
+                        </span>
+                        <span className="hidden sm:inline text-foreground/50">
+                          •
+                        </span>
+                        <span className="text-foreground/60 text-xs sm:text-sm truncate">
+                          {assignment.courseName}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <span className="text-foreground/60 flex items-center gap-1">
-                      <BookOpen size={12} />
-                      {assignment.courseShortName}
-                    </span>
-                    {assignment.dueDate && (
-                      <span className="text-foreground/60 flex items-center gap-1">
-                        <Calendar size={12} />
-                        Due {assignment.dueDate}
-                      </span>
+
+                  {/* Status and Action - Mobile/Desktop Layout */}
+                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-2 sm:flex-col sm:items-end">
+                    <div className="flex items-center gap-2">
+                      {getAssignmentStatusChip(
+                        assignment.assignmentInfo,
+                        assignment.dueDate,
+                      )}
+                    </div>
+                    {assignment.url && (
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        color="primary"
+                        onPress={() => window.open(assignment.url, "_blank")}
+                        className="shrink-0"
+                      >
+                        <span className="hidden sm:inline">
+                          Open Assignment
+                        </span>
+                        <span className="sm:hidden">Open</span>
+                      </Button>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 ml-4">
-                  {getAssignmentStatusChip(
-                    assignment.assignmentInfo,
-                    assignment.dueDate,
-                  )}
-                  {assignment.url && (
-                    <Button
-                      size="sm"
-                      variant="light"
-                      onPress={() => window.open(assignment.url, "_blank")}
-                    >
-                      Open
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-            {filteredAssignments.length === 0 && (
-              <div className="p-8 text-center">
-                <div className="mb-4">
-                  <BookOpen className="w-12 h-12 text-foreground/20 mx-auto" />
-                </div>
-                <p className="text-foreground/60 mb-2">
-                  {searchQuery.trim() ||
-                  hiddenStatuses.size > 0 ||
-                  selectedCourses.size > 0
-                    ? "No assignments match your search or filter criteria."
-                    : "No assignments found across your courses."}
-                </p>
-                {(searchQuery.trim() ||
-                  hiddenStatuses.size > 0 ||
-                  selectedCourses.size > 0) && (
-                  <Button
-                    size="sm"
-                    variant="light"
-                    onPress={() => {
-                      setSearchQuery("");
-                      setHiddenStatuses(
-                        new Set(["Unknown", "Not started", "Closed"]),
-                      );
-                      setSelectedCourses(new Set());
-                    }}
-                    className="mt-2"
-                  >
-                    Clear all filters
-                  </Button>
+
+                {/* Due Date Row */}
+                {assignment.dueDate && (
+                  <div className="flex items-center gap-2 text-sm text-foreground/60 pt-2 border-t border-divider/30">
+                    <Calendar size={14} className="shrink-0" />
+                    <span>Due {assignment.dueDate}</span>
+                  </div>
                 )}
               </div>
-            )}
-          </div>
-        </CardBody>
-      </Card>
+            </CardBody>
+          </Card>
+        ))}
+        {filteredAssignments.length === 0 && (
+          <Card className="border border-divider">
+            <CardBody className="p-8 text-center">
+              <div className="mb-4">
+                <BookOpen className="w-12 h-12 text-foreground/20 mx-auto" />
+              </div>
+              <p className="text-foreground/60 mb-2">
+                {searchQuery.trim() ||
+                hiddenStatuses.size > 0 ||
+                selectedCourses.size > 0
+                  ? "No assignments match your search or filter criteria."
+                  : "No assignments found across your courses."}
+              </p>
+              {(searchQuery.trim() ||
+                hiddenStatuses.size > 0 ||
+                selectedCourses.size > 0) && (
+                <Button
+                  size="sm"
+                  variant="light"
+                  onPress={() => {
+                    setSearchQuery("");
+                    setHiddenStatuses(
+                      new Set(["Unknown", "Not started", "Closed"]),
+                    );
+                    setSelectedCourses(new Set());
+                  }}
+                  className="mt-2"
+                >
+                  Clear all filters
+                </Button>
+              )}
+            </CardBody>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

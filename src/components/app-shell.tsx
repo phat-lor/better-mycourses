@@ -51,6 +51,7 @@ export default function AppShell({ children }: AppShellProps) {
     { key: "dashboard", title: "Dashboard", href: "/app/home" },
     { key: "courses", title: "Courses", href: "/app/courses" },
     { key: "assignments", title: "Assignments", href: "/app/assignments" },
+    { key: "quizzes", title: "Quizzes", href: "/app/quizzes" },
     { key: "calendar", title: "Calendar", href: "/app/calendar" },
   ];
 

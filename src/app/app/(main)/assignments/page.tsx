@@ -1,5 +1,5 @@
-import { AssignmentsPage } from "@/components/assignments";
+import { GlobalAssignmentsPage } from "@/components/assignments";
 
 export default function Assignments() {
-  return <AssignmentsPage />;
+  return <GlobalAssignmentsPage />;
 }

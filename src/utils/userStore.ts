@@ -1,18 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
-  AssignmentComment,
-  AssignmentDates,
-  AssignmentGrading,
   AssignmentInfo,
-  AssignmentSettings,
-  AssignmentSubmission,
-  CourseActivity,
   CourseContent,
   CourseSection,
-  QuizAttempt,
   QuizInfo,
-  SubmissionFile,
 } from "./moodleParser";
 
 interface Attendance {

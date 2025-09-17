@@ -150,7 +150,6 @@ export const getQuizStatusChip = (
             Closed
           </Chip>
         );
-      case "not_started":
       default:
         return (
           <Chip size="sm" variant="flat">

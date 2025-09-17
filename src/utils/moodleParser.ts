@@ -459,7 +459,7 @@ function parseSyllabusInfo(html: string): SyllabusInfo {
         "thead th, tr:first-child th, tr:first-child td",
       );
       const headerText = headers
-        .map((j, h) => $(h).text().trim().toLowerCase())
+        .map((_j, h) => $(h).text().trim().toLowerCase())
         .get()
         .join(" ");
 
@@ -773,7 +773,7 @@ export function extractQuizInfo(htmlContent: string): QuizInfo | null {
               // Extract percentage from grade
               const percentMatch = dataCell.match(/\((\d+(?:\.\d+)?)%\)/);
               if (percentMatch) {
-                attempt.scorePercentage = percentMatch[1] + "%";
+                attempt.scorePercentage = `${percentMatch[1]}%`;
               }
               break;
             }
@@ -1025,7 +1025,7 @@ export function extractAssignmentInfo(
       if (cells.length >= 2) {
         const label = $(cells[0]).text().trim().toLowerCase();
         const value = $(cells[1]).text().trim();
-        const valueHtml = $(cells[1]).html() || "";
+        const _valueHtml = $(cells[1]).html() || "";
 
         switch (label) {
           case "attempt number": {
@@ -1121,7 +1121,7 @@ export function extractAssignmentInfo(
     const $elem = $(elem);
     const href = $elem.attr("href");
     const text = $elem.text().trim();
-    const className = $elem.attr("class") || "";
+    const _className = $elem.attr("class") || "";
 
     if (href && text && !href.includes("mobile") && !text.includes("mobile")) {
       const file: SubmissionFile = {
@@ -1587,7 +1587,7 @@ export function extractCourseContent(
     ) {
       const parts = sectionName.split("Assignment Submissions");
       if (parts.length > 1) {
-        cleanSectionName = parts[0].trim() + " Assignment Submissions";
+        cleanSectionName = `${parts[0].trim()} Assignment Submissions`;
       }
     }
 

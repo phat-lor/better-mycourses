@@ -73,9 +73,9 @@ export default function GlobalQuizzesPage() {
       if (!course.content) continue;
 
       const courseQuizzes = course.content.sections
-        .flatMap((s: any) => s.activities)
-        .filter((a: any) => a.type === "quiz" && a.url)
-        .map((quiz: any) => ({
+        .flatMap((s) => s.activities)
+        .filter((a) => a.type === "quiz" && a.url)
+        .map((quiz) => ({
           ...quiz,
           courseName: course.fullname,
           courseShortName: course.shortname,
@@ -234,10 +234,10 @@ export default function GlobalQuizzesPage() {
 
   const coursesWithQuizzes = useMemo(() => {
     if (!courses.length) return [];
-    return courses.filter((course: any) =>
-      course.content?.sections.some((section: any) =>
+    return courses.filter((course) =>
+      course.content?.sections.some((section) =>
         section.activities.some(
-          (activity: any) => activity.type === "quiz" && activity.url,
+          (activity) => activity.type === "quiz" && activity.url,
         ),
       ),
     );
@@ -370,7 +370,7 @@ export default function GlobalQuizzesPage() {
                     Filter by Course:
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {coursesWithQuizzes.map((course: any) => (
+                    {coursesWithQuizzes.map((course) => (
                       <Chip
                         key={course.id}
                         size="sm"

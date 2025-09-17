@@ -4,7 +4,7 @@ import { Button, Card, CardBody, CardHeader, Chip, Input } from "@heroui/react";
 import { Calendar, ExternalLink, Filter, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { CourseActivity } from "@/utils/moodleParser";
-import { getQuizStatusChip, getAssignmentStatusChip } from "./status-chips";
+import { getAssignmentStatusChip, getQuizStatusChip } from "./status-chips";
 import type { StoreCourse } from "./types";
 
 interface ActivitiesListProps {
@@ -60,7 +60,7 @@ export default function ActivitiesList({ course }: ActivitiesListProps) {
   }, [course.content]);
 
   const activityTypes = useMemo(() => {
-    const types = new Set(allActivities.map(a => a.type));
+    const types = new Set(allActivities.map((a) => a.type));
     return Array.from(types).sort();
   }, [allActivities]);
 
@@ -68,19 +68,21 @@ export default function ActivitiesList({ course }: ActivitiesListProps) {
     let filtered = allActivities;
 
     // Filter out activities without URLs (locked/unavailable)
-    filtered = filtered.filter(activity => activity.url);
+    filtered = filtered.filter((activity) => activity.url);
 
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(activity =>
-        activity.name.toLowerCase().includes(query)
+      filtered = filtered.filter((activity) =>
+        activity.name.toLowerCase().includes(query),
       );
     }
 
     // Apply type filter
     if (selectedTypes.size > 0) {
-      filtered = filtered.filter(activity => selectedTypes.has(activity.type));
+      filtered = filtered.filter((activity) =>
+        selectedTypes.has(activity.type),
+      );
     }
 
     return filtered;
@@ -108,13 +110,15 @@ export default function ActivitiesList({ course }: ActivitiesListProps) {
   // Group activities by section
   const activitiesBySection = useMemo(() => {
     if (!course.content) return [];
-    
-    return course.content.sections.map(section => ({
-      ...section,
-      activities: section.activities.filter(activity => 
-        filteredActivities.includes(activity)
-      )
-    })).filter(section => section.activities.length > 0);
+
+    return course.content.sections
+      .map((section) => ({
+        ...section,
+        activities: section.activities.filter((activity) =>
+          filteredActivities.includes(activity),
+        ),
+      }))
+      .filter((section) => section.activities.length > 0);
   }, [course.content, filteredActivities]);
 
   return (
@@ -158,7 +162,9 @@ export default function ActivitiesList({ course }: ActivitiesListProps) {
 
             {showFilters && (
               <div className="space-y-3">
-                <div className="text-sm font-medium text-foreground/80">Filter by Type:</div>
+                <div className="text-sm font-medium text-foreground/80">
+                  Filter by Type:
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {activityTypes.map((type) => (
                     <Chip
@@ -193,9 +199,7 @@ export default function ActivitiesList({ course }: ActivitiesListProps) {
         <Card key={section.id} className="border border-divider">
           <CardHeader>
             <div>
-              <h3 className="text-lg font-semibold">
-                {section.name}
-              </h3>
+              <h3 className="text-lg font-semibold">{section.name}</h3>
               {section.summary && (
                 <p className="text-sm text-foreground/60 mt-1">
                   {section.summary}
@@ -212,9 +216,14 @@ export default function ActivitiesList({ course }: ActivitiesListProps) {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">{getActivityIcon(activity.type)}</span>
+                      <span className="text-lg">
+                        {getActivityIcon(activity.type)}
+                      </span>
                       <div className="min-w-0">
-                        <p className="font-medium text-foreground truncate" title={activity.name}>
+                        <p
+                          className="font-medium text-foreground truncate"
+                          title={activity.name}
+                        >
                           {activity.name}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
@@ -223,7 +232,9 @@ export default function ActivitiesList({ course }: ActivitiesListProps) {
                           </Chip>
                           {activity.dueDate && (
                             <>
-                              <span className="text-xs text-foreground/40">•</span>
+                              <span className="text-xs text-foreground/40">
+                                •
+                              </span>
                               <span className="text-xs text-foreground/60 flex items-center gap-1">
                                 <Calendar size={12} />
                                 Due {activity.dueDate}

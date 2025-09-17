@@ -72,9 +72,9 @@ export default function GlobalAssignmentsPage() {
       if (!course.content) continue;
 
       const courseAssignments = course.content.sections
-        .flatMap((s: any) => s.activities)
-        .filter((a: any) => a.type === "assign" && a.url)
-        .map((assignment: any) => ({
+        .flatMap((s) => s.activities)
+        .filter((a) => a.type === "assign" && a.url)
+        .map((assignment) => ({
           ...assignment,
           courseName: course.fullname,
           courseShortName: course.shortname,
@@ -221,10 +221,10 @@ export default function GlobalAssignmentsPage() {
 
   const coursesWithAssignments = useMemo(() => {
     if (!courses.length) return [];
-    return courses.filter((course: any) =>
-      course.content?.sections.some((section: any) =>
+    return courses.filter((course) =>
+      course.content?.sections.some((section) =>
         section.activities.some(
-          (activity: any) => activity.type === "assign" && activity.url,
+          (activity) => activity.type === "assign" && activity.url,
         ),
       ),
     );
@@ -357,7 +357,7 @@ export default function GlobalAssignmentsPage() {
                     Filter by Course:
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {coursesWithAssignments.map((course: any) => (
+                    {coursesWithAssignments.map((course) => (
                       <Chip
                         key={course.id}
                         size="sm"
